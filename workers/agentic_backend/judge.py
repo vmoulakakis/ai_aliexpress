@@ -173,10 +173,14 @@ def judge_products():
       if prior: continue
 
       signals=[]
+      gap_assessments=[]
       if primary_problem_id:
         signals=list(db_call("GET","ai_demand_signals",params={
           "select":"source_family,source_name,signal_type,observed_value,evidence_text,observed_at,ai_relevance,ai_purchase_intent,ai_confidence,metadata",
           "problem_cluster_id":f"eq.{primary_problem_id}","order":"observed_at.desc","limit":"40"}) or [])
+        gap_assessments=list(db_call("GET","ai_greek_gap_assessments",params={
+          "select":"lifecycle,demand_state,pain_state,supply_state,competition_state,exact_match_state,substitute_state,price_gap_state,buyer_intent_state,conversion_opportunity,confidence,evidence_count,thesis,counter_thesis,next_actions,assessed_at",
+          "problem_cluster_id":f"eq.{primary_problem_id}","order":"assessed_at.desc","limit":"3"}) or [])
 
       out=ask(JUDGE_MODEL,"""You are the final Commercial Judge for a Greek commerce opportunity.
 The only deterministic gate has already been applied: expected commission >= EUR 10.
@@ -187,7 +191,9 @@ Use the discovery queries and returned product evidence to understand why the pr
 Evaluate holistically:
 - semantic fit to the Greek problem and target customer
 - strength of the physical solution
+- Greek pain-gap evidence: buyer pain, purchase intent, exact local supply, substitutes and competition
 - demand evidence quality (distinguish AI hypotheses from externally observed evidence)
+- latest Greek Gap Assessment when available; treat it as evidence synthesis, not a deterministic filter
 - likely Greek scarcity/substitute risk
 - seller/product trust evidence
 - fulfillment and landed-cost uncertainty
@@ -216,7 +222,8 @@ Return JSON {
  evidence_used:[...],
  next_evidence:[...]
 }.""",
-        {"candidate":p,"discoveries":discoveries,"problems":problems,"demand_signals":signals})
+        {"candidate":p,"discoveries":discoveries,"problems":problems,"demand_signals":signals,
+         "greek_gap_assessments":gap_assessments})
 
       db_call("POST","ai_product_evaluations",data={
         "product_candidate_id":p["product_candidate_id"],"offer_id":p["offer_id"],
