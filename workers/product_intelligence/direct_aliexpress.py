@@ -110,8 +110,28 @@ def upsert_offer(product_id:str,p:dict[str,Any])->Decimal|None:
 
 def active_queries(limit:int):
     return list(db_call("GET","ai_source_queries",params={
-      "select":"id,query_text,problem_cluster_id,hypothesis,priority,query_family,consecutive_zero_runs",
+      "select":"id,query_text,problem_cluster_id,hypothesis,priority,query_family,consecutive_zero_runs,agent_feedback",
       "status":"eq.active","order":"priority.desc.nullslast,updated_at.desc","limit":str(limit)}) or [])
+
+def upsert_discovery(product_id:str,row:dict[str,Any],mode:str,rank:int):
+    if not row.get("problem_cluster_id"): return
+    db_call("POST","ai_product_discoveries",
+      params={"on_conflict":"product_candidate_id,source_query_id,retrieval_mode"},
+      data={
+        "product_candidate_id":product_id,
+        "source_query_id":row["id"],
+        "problem_cluster_id":row.get("problem_cluster_id"),
+        "retrieval_mode":mode,
+        "result_rank":rank,
+        "query_text":row.get("query_text"),
+        "metadata":{
+          "source":"travelai-aliexpress",
+          "query_family":row.get("query_family"),
+          "greek_gap_opportunity":(row.get("agent_feedback") or {}).get("greek_gap_opportunity"),
+          "greek_gap_confidence":(row.get("agent_feedback") or {}).get("greek_gap_confidence")
+        }
+      },
+      prefer="resolution=merge-duplicates,return=minimal")
 
 def run_query(row,pages:int):
     stats={"seen":0,"stored":0,"promotion_eligible":0}
@@ -132,7 +152,7 @@ def run_query(row,pages:int):
                 data=call_api(payload)
                 products=list(data.get("products") or [])
                 if not products:break
-                for p in products:
+                for rank,p in enumerate(products, start=1):
                     pid=str(p.get("product_id") or "")
                     if pid and pid in seen_ids: continue
                     if pid: seen_ids.add(pid)
@@ -148,7 +168,9 @@ def run_query(row,pages:int):
                           "mode":mode
                         })
                     try:
-                        saved=upsert_product(p);comm=upsert_offer(saved["id"],p);stats["stored"]+=1
+                        saved=upsert_product(p);comm=upsert_offer(saved["id"],p)
+                        upsert_discovery(saved["id"],row,mode,rank)
+                        stats["stored"]+=1
                         if comm is not None and comm>=MIN_COMMISSION_EUR:stats["promotion_eligible"]+=1
                     except Exception as exc:
                         print(json.dumps({"event":"candidate_error","query":row["query_text"],"error":str(exc)[:400]}))
@@ -156,21 +178,25 @@ def run_query(row,pages:int):
         except Exception as exc:
             error=str(exc)[:1000]
             print(json.dumps({"event":"query_transport_error","query":row["query_text"],"action":action,"mode":mode,"error":error}))
-            if stats["seen"]==0: break
+            # Continue to the next retrieval mode on recoverable endpoint/search errors.
+            continue
     now=datetime.now(timezone.utc).isoformat()
     zero=stats["seen"]==0
     current_zeros=int(row.get("consecutive_zero_runs") or 0)
+    prior_feedback=row.get("agent_feedback") or {}
+    merged_feedback={**prior_feedback,
+      "retrieval_strategy":"relevance_then_volume_then_hotproducts",
+      "zero_result":zero,
+      "sample_results":sample,
+      "result_count":stats["seen"],
+      "eligible_count":stats["promotion_eligible"]}
     db_call("PATCH","ai_source_queries",params={"id":f"eq.{row['id']}"},
             data={"last_run_at":now,"updated_at":now,
                   "last_result_count":stats["seen"],
                   "last_eligible_count":stats["promotion_eligible"],
                   "consecutive_zero_runs":current_zeros+1 if zero else 0,
                   "last_error":error,
-                  "agent_feedback":{
-                    "retrieval_strategy":"relevance_then_volume_then_hotproducts",
-                    "zero_result":zero,
-                    "sample_results":sample
-                  }},
+                  "agent_feedback":merged_feedback},
             prefer="return=minimal")
     return stats
 
