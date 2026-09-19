@@ -39,5 +39,9 @@ jobs:
         run: python workers/agentic_backend/judge.py
       - name: Source AliExpress candidates
         run: python workers/product_intelligence/direct_aliexpress.py --queries 30 --pages 2
+      - name: Enrich eligible product intelligence
+        env:
+          PUBLIC_PAGE_PROBE_ENABLED: "false"
+        run: python workers/product_intelligence/enrich_eligible.py --limit 200
       - name: Judge new candidates
         run: python workers/agentic_backend/judge.py
