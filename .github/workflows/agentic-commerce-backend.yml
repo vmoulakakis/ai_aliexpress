@@ -2,15 +2,9 @@ name: Agentic Commerce Backend
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'workers/demand_intelligence/**'
-      - 'workers/agentic_backend/**'
-      - 'skills/GREEK_PAIN_GAP_DEMAND_INTELLIGENCE.md'
-      - '.github/workflows/agentic-commerce-backend.yml'
   schedule:
     - cron: '41 2 * * *'
+    - cron: '17 14 * * *'
 
 permissions:
   contents: read
