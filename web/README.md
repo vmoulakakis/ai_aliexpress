@@ -11,3 +11,5 @@ npm run build
 
 Core interaction contract:
 Evidence -> Economics -> Decision -> Product
+
+Deployment target: Vercel / axizei-proof-commerce
