@@ -30,17 +30,42 @@ def load_topics():
       "market_code":"eq.GR","order":"updated_at.desc","limit":str(TOPICS)}) or [])
 
 def build_queries(topic):
-    out=ask(FAST_MODEL,"""You are Product Hunter for Greece. Generate 4-8 concise AliExpress search queries
-for distinct mechanisms that could solve the supplied Greek problem. Do not filter by seller rating,
-warehouse, shipping, scarcity, trust or price. EU fulfillment is positive evidence, not a hard gate.
-Return JSON {queries:[{query,hypothesis,reason}]}.""",topic)
+    failed=list(db_call("GET","ai_source_queries",params={
+      "select":"query_text,query_family,last_result_count,last_eligible_count,consecutive_zero_runs,last_error,agent_feedback",
+      "problem_cluster_id":f"eq.{topic['id']}","order":"consecutive_zero_runs.desc,last_run_at.desc.nullslast","limit":"40"}) or [])
+    out=ask(FAST_MODEL,"""You are an expert AliExpress search strategist and Product Hunter for Greece.
+Your job is NOT to filter products. Your job is to discover the widest plausible solution space for the problem.
+
+Generate 8-14 search queries in AliExpress-native marketplace language. Use multiple query families:
+1) broad product noun (2-4 words)
+2) functional mechanism
+3) professional/prosumer wording
+4) alternative mechanism that solves the same pain
+5) common marketplace synonym
+6) use-case wording
+7) component/system wording when useful
+
+Rules:
+- Avoid long natural-language sentences.
+- Avoid over-specific phrases that are unlikely to exist in listings.
+- Prefer concrete product nouns and marketplace terminology.
+- Do not include Greece, price, seller, warehouse, shipping, trust, review or commission filters.
+- EU warehouse is evidence evaluated later, never encoded into the search phrase.
+- Study failed_queries. If a prior query returned zero/weak results, reformulate it rather than repeating it.
+- If prior queries were too narrow, broaden. If noisy, use more precise product nouns.
+- Return strict JSON:
+{queries:[{query,query_family,hypothesis,reason,what_changed_from_failed_queries}]}.""",
+      {"topic":topic,"failed_queries":failed})
     for i,x in enumerate(out.get("queries") or []):
-      q=str(x.get("query") or "").strip()
+      q=" ".join(str(x.get("query") or "").split()).strip()
       if not q:continue
       db_call("POST","ai_source_queries",
         params={"on_conflict":"market_code,source_key,query_text"},
         data={"market_code":"GR","source_key":"aliexpress","query_text":q,
-              "problem_cluster_id":topic["id"],"hypothesis":x,"priority":100-i,"status":"active"},
+              "problem_cluster_id":topic["id"],"hypothesis":x,
+              "query_family":str(x.get("query_family") or "agentic"),
+              "priority":100-i,"status":"active",
+              "agent_feedback":{"generation":"adaptive","used_failed_query_feedback":bool(failed)}},
         prefer="resolution=merge-duplicates,return=minimal")
 
 def forecast(topic):
