@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 120
     env:
       VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
-      ALIEXPRESS_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/direct-aliexpress
+      ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
       SEARXNG_BASE_URL: http://127.0.0.1:8080
       GITHUB_TOKEN: ${{ github.token }}
       MARKET_CODE: GR
