@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# full-cycle trigger: pain-gap-rag-v2
 from __future__ import annotations
 import hashlib,json,os,sys
 from datetime import datetime,timezone
