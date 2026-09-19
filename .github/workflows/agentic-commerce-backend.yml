@@ -2,6 +2,13 @@ name: Agentic Commerce Backend
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/demand_intelligence/**'
+      - 'workers/agentic_backend/**'
+      - 'skills/GREEK_PAIN_GAP_DEMAND_INTELLIGENCE.md'
+      - '.github/workflows/agentic-commerce-backend.yml'
   schedule:
     - cron: '41 2 * * *'
 
@@ -20,6 +27,8 @@ jobs:
       SEARXNG_BASE_URL: http://127.0.0.1:8080
       GITHUB_TOKEN: ${{ github.token }}
       MARKET_CODE: GR
+      DEMAND_TOPIC_LIMIT: 100
+      DEMAND_RESULTS_PER_QUERY: 6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
