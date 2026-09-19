@@ -1,0 +1,35 @@
+name: Direct AliExpress Sourcing
+
+on:
+  workflow_dispatch:
+    inputs:
+      query_limit:
+        description: AI source queries
+        required: false
+        default: '30'
+      pages_per_query:
+        description: Pages per query
+        required: false
+        default: '2'
+  schedule:
+    - cron: '17 11 * * *'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
+      ALIEXPRESS_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/direct-aliexpress
+      MARKET_CODE: GR
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python workers/product_intelligence/direct_aliexpress.py --queries ${{ inputs.query_limit || '30' }} --pages ${{ inputs.pages_per_query || '2' }}

@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Compile Python workers
+        run: python -m compileall -q workers
+      - name: Check worker gateway
+        run: deno check --node-modules-dir=auto supabase/functions/ai-aliexpress-worker-gateway/index.ts
+      - name: Check direct AliExpress gateway
+        run: deno check --node-modules-dir=auto supabase/functions/direct-aliexpress/index.ts

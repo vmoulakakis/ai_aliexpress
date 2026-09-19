@@ -1,0 +1,40 @@
+name: Agentic Commerce Backend
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 2 * * *'
+
+permissions:
+  contents: read
+  id-token: write
+  models: read
+
+jobs:
+  backend-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
+      ALIEXPRESS_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/direct-aliexpress
+      SEARXNG_BASE_URL: http://127.0.0.1:8080
+      GITHUB_TOKEN: ${{ github.token }}
+      MARKET_CODE: GR
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Start SearXNG
+        run: |
+          docker run -d --name searxng -p 8080:8080 searxng/searxng:2026.9.5-c7f3080aa
+          for i in {1..30}; do curl -fsS http://127.0.0.1:8080/ >/dev/null && break; sleep 2; done
+      - name: Harvest Greek demand evidence
+        run: python workers/demand_intelligence/harvest.py
+      - name: Build hypotheses and forecasts
+        run: python workers/agentic_backend/judge.py
+      - name: Source AliExpress candidates
+        run: python workers/product_intelligence/direct_aliexpress.py --queries 30 --pages 2
+      - name: Judge new candidates
+        run: python workers/agentic_backend/judge.py
