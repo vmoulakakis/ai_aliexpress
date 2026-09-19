@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 45
     env:
       VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
-      ALIEXPRESS_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/direct-aliexpress
+      ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
       MARKET_CODE: GR
     steps:
       - uses: actions/checkout@v4
