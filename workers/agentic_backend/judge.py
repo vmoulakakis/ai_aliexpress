@@ -12,6 +12,7 @@ from db_gateway import db_call  # noqa:E402
 ENDPOINT="https://models.github.ai/inference/chat/completions"
 TOKEN=os.getenv("GITHUB_TOKEN","")
 FAST_MODEL=os.getenv("HYPOTHESIS_MODEL","openai/gpt-4.1-mini")
+SEARCH_MODEL=os.getenv("PRODUCT_SEARCH_MODEL","openai/gpt-4.1")
 JUDGE_MODEL=os.getenv("OPPORTUNITY_JUDGE_MODEL","openai/gpt-4.1")
 TOPICS=int(os.getenv("AGENTIC_TOPIC_LIMIT","20"))
 PRODUCTS=int(os.getenv("AGENTIC_PRODUCT_LIMIT","60"))
@@ -30,42 +31,100 @@ def load_topics():
       "market_code":"eq.GR","order":"updated_at.desc","limit":str(TOPICS)}) or [])
 
 def build_queries(topic):
-    failed=list(db_call("GET","ai_source_queries",params={
-      "select":"query_text,query_family,last_result_count,last_eligible_count,consecutive_zero_runs,last_error,agent_feedback",
-      "problem_cluster_id":f"eq.{topic['id']}","order":"consecutive_zero_runs.desc,last_run_at.desc.nullslast","limit":"40"}) or [])
-    out=ask(FAST_MODEL,"""You are an expert AliExpress search strategist and Product Hunter for Greece.
-Your job is NOT to filter products. Your job is to discover the widest plausible solution space for the problem.
+    history=list(db_call("GET","ai_source_queries",params={
+      "select":"query_text,query_family,last_result_count,last_eligible_count,consecutive_zero_runs,last_error,agent_feedback,hypothesis",
+      "problem_cluster_id":f"eq.{topic['id']}","order":"last_run_at.desc.nullslast,priority.desc","limit":"60"}) or [])
 
-Generate 8-14 search queries in AliExpress-native marketplace language. Use multiple query families:
-1) broad product noun (2-4 words)
-2) functional mechanism
-3) professional/prosumer wording
-4) alternative mechanism that solves the same pain
-5) common marketplace synonym
-6) use-case wording
-7) component/system wording when useful
+    # Give the Search Planner actual marketplace feedback. It sees what AliExpress
+    # called the products, which categories appeared, and whether the previous
+    # query was zero-result, noisy, or commercially useful.
+    marketplace_feedback=[]
+    for row in history:
+      fb=row.get("agent_feedback") or {}
+      marketplace_feedback.append({
+        "query":row.get("query_text"),
+        "query_family":row.get("query_family"),
+        "result_count":row.get("last_result_count"),
+        "eligible_count":row.get("last_eligible_count"),
+        "zero_runs":row.get("consecutive_zero_runs"),
+        "last_error":row.get("last_error"),
+        "sample_results":(fb.get("sample_results") or [])[:12],
+        "previous_hypothesis":row.get("hypothesis") or {}
+      })
 
-Rules:
-- Avoid long natural-language sentences.
-- Avoid over-specific phrases that are unlikely to exist in listings.
-- Prefer concrete product nouns and marketplace terminology.
-- Do not include Greece, price, seller, warehouse, shipping, trust, review or commission filters.
-- EU warehouse is evidence evaluated later, never encoded into the search phrase.
-- Study failed_queries. If a prior query returned zero/weak results, reformulate it rather than repeating it.
-- If prior queries were too narrow, broaden. If noisy, use more precise product nouns.
-- Return strict JSON:
-{queries:[{query,query_family,hypothesis,reason,what_changed_from_failed_queries}]}.""",
-      {"topic":topic,"failed_queries":failed})
+    out=ask(SEARCH_MODEL,"""You are the Senior Marketplace Retrieval Agent for AliExpress.
+You are not a filter and you are not a copywriter. You are a search-retrieval specialist.
+
+GOAL:
+Discover the broadest plausible set of physical products that could solve the supplied Greek customer problem.
+Your output becomes live AliExpress search queries.
+
+USE MARKETPLACE FEEDBACK:
+- Inspect prior result counts.
+- Inspect returned product titles and categories.
+- Learn AliExpress seller vocabulary from sample_results.
+- Detect when a query is too narrow, too broad/noisy, or using terminology sellers do not use.
+- Never repeat a zero-result phrase unchanged.
+- If returned titles reveal a better noun/synonym, reuse that marketplace vocabulary.
+- If a query returns many irrelevant products, tighten the PRODUCT NOUN, not by adding commercial filters.
+
+CREATE A SEARCH PORTFOLIO, NOT ONE QUERY:
+A. 2 broad anchor nouns: 1-3 concrete product words.
+B. 2 mechanism queries: physical mechanism/technology.
+C. 2 professional/prosumer queries: terminology technicians or B2B sellers use.
+D. 2 synonym queries: alternate marketplace names for the same product class.
+E. 2 adjacent-solution queries: a different product mechanism solving the same pain.
+F. 1-2 component/system queries where a component is more likely listed than the full solution.
+
+QUERY RULES:
+- 1-6 words preferred; maximum 8 words.
+- English marketplace terminology.
+- Concrete physical product nouns.
+- No full natural-language questions.
+- No Greece, EU, warehouse, seller, review, trust, shipping, price, discount, commission or rating terms.
+- Do not encode deterministic filters.
+- Do not assume the product category in advance; explore alternate solution mechanisms.
+- Avoid marketing adjectives unless they are genuine marketplace nouns such as industrial, automotive, marine, LoRa, thermal.
+- Distinguish discovery from commercial judgment: retrieval should be broad; AI judges quality later.
+
+Return strict JSON:
+{
+  "diagnosis":{
+    "what_failed_before":[],
+    "useful_marketplace_vocabulary":[],
+    "retrieval_strategy":"..."
+  },
+  "queries":[
+    {
+      "query":"...",
+      "query_family":"anchor|mechanism|professional|synonym|adjacent_solution|component",
+      "hypothesis":"what physical solution this is trying to discover",
+      "reason":"why AliExpress is likely to use these words",
+      "learned_from":"problem|prior_results|zero_result_recovery"
+    }
+  ]
+}""",{"topic":topic,"marketplace_feedback":marketplace_feedback})
+
+    diagnosis=out.get("diagnosis") or {}
+    seen=set()
     for i,x in enumerate(out.get("queries") or []):
       q=" ".join(str(x.get("query") or "").split()).strip()
-      if not q:continue
+      norm=q.lower()
+      if not q or norm in seen:continue
+      seen.add(norm)
+      words=q.split()
+      if len(words)>8: q=" ".join(words[:8])
       db_call("POST","ai_source_queries",
         params={"on_conflict":"market_code,source_key,query_text"},
         data={"market_code":"GR","source_key":"aliexpress","query_text":q,
               "problem_cluster_id":topic["id"],"hypothesis":x,
               "query_family":str(x.get("query_family") or "agentic"),
-              "priority":100-i,"status":"active",
-              "agent_feedback":{"generation":"adaptive","used_failed_query_feedback":bool(failed)}},
+              "priority":120-i,"status":"active",
+              "agent_feedback":{
+                "generation":"professional_adaptive_search_v2",
+                "used_marketplace_feedback":bool(marketplace_feedback),
+                "planner_diagnosis":diagnosis
+              }},
         prefer="resolution=merge-duplicates,return=minimal")
 
 def forecast(topic):
