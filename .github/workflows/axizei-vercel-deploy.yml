@@ -1,11 +1,6 @@
 name: Deploy AXIZEI to Vercel
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'web/**'
-      - '.github/workflows/axizei-vercel-deploy.yml'
 
 jobs:
   deploy:
