@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import CryptoJS from "npm:crypto-js@4.2.0";
 
-const API_URL=Deno.env.get("ALIEXPRESS_API_URL")||"https://eco.taobao.com/router/rest";
+const API_URL=Deno.env.get("ALIEXPRESS_API_URL")||"https://gw.api.taobao.com/router/rest";
 const APP_KEY=Deno.env.get("ALIEXPRESS_APP_KEY")||"";
 const APP_SECRET=Deno.env.get("ALIEXPRESS_APP_SECRET")||"";
 const TRACKING_ID=Deno.env.get("ALIEXPRESS_TRACKING_ID")||"";
@@ -54,9 +54,9 @@ function mapProduct(x:any){
     product_main_image_url:x.product_main_image_url||x.image_url||x.imageUrl||null,
     product_detail_url:x.product_detail_url||x.product_url||x.productUrl||null,
     promotion_link:x.promotion_link||x.promotionLink||null,
-    sale_price:n(x.sale_price??x.target_sale_price??x.price),
-    original_price:n(x.original_price??x.originalPrice),
-    commission_rate:x.commission_rate??x.commissionRate??null,
+    sale_price:n(x.sale_price??x.target_sale_price??x.app_sale_price??x.price),
+    original_price:n(x.original_price??x.originalPrice??x.app_original_price),
+    commission_rate:x.commission_rate??x.hot_product_commission_rate??x.commissionRate??null,
     evaluate_rate:x.evaluate_rate??x.positive_feedback_rate??x.positiveFeedbackRate??null,
     lastest_volume:x.lastest_volume??x.latest_volume??x.sales??null,
     second_level_category_name:x.second_level_category_name||x.category_name||x.category||null,
@@ -70,6 +70,20 @@ Deno.serve(async req=>{
   if(req.method!=="POST")return json({ok:false,error:"method_not_allowed"},405);
   try{
     const b=await req.json(),action=String(b.action||"");
+    if(action==="probe"){
+      const checks:any[]=[];
+      for(const [name,method,business] of [
+        ["product_query","aliexpress.affiliate.product.query",{keywords:String(b.keywords||"thermal camera"),page_no:1,page_size:3,target_currency:"EUR",target_language:"EN",tracking_id:TRACKING_ID||undefined,ship_to_country:"GR",fields:"product_id,product_title,commission_rate,sale_price,target_sale_price,app_sale_price"}],
+        ["hotproduct_query","aliexpress.affiliate.hotproduct.query",{keywords:String(b.keywords||"thermal camera"),page_no:1,page_size:3,target_currency:"EUR",target_language:"EN",tracking_id:TRACKING_ID||undefined,ship_to_country:"GR",fields:"product_id,product_title,commission_rate,hot_product_commission_rate,sale_price,target_sale_price,app_sale_price"}]
+      ] as any[]){
+        try{
+          const data=await top(method,{app_signature:APP_SIGNATURE||undefined,...business});
+          const mapped=products(data).map(mapProduct).filter(Boolean);
+          checks.push({name,ok:true,count:mapped.length,sample:mapped.slice(0,2)});
+        }catch(e){checks.push({name,ok:false,error:String(e instanceof Error?e.message:e).slice(0,300)})}
+      }
+      return json({ok:true,data:{configured:Boolean(APP_KEY&&APP_SECRET),api_url:API_URL,tracking_configured:Boolean(TRACKING_ID),checks}});
+    }
     if(action==="search"||action==="hotproducts"){
       const q=String(b.keywords||b.query||"").trim(); if(!q)throw new Error("keywords_required");
       const method=action==="hotproducts"?"aliexpress.affiliate.hotproduct.query":"aliexpress.affiliate.product.query";
@@ -77,7 +91,8 @@ Deno.serve(async req=>{
         app_signature:APP_SIGNATURE||undefined,keywords:q,page_no:Number(b.page||1),
         page_size:Math.min(50,Number(b.page_size||20)),sort:action==="hotproducts"?"LAST_VOLUME_DESC":String(b.sort||"LAST_VOLUME_DESC"),
         target_currency:String(b.currency||"EUR"),target_language:String(b.language||"EN"),
-        tracking_id:TRACKING_ID||undefined,ship_to_country:String(b.ship_to||"GR")
+        tracking_id:TRACKING_ID||undefined,ship_to_country:String(b.ship_to||"GR"),
+        fields:String(b.fields||"product_id,product_title,product_main_image_url,product_detail_url,commission_rate,hot_product_commission_rate,sale_price,target_sale_price,app_sale_price,original_price,evaluate_rate,lastest_volume,first_level_category_name,second_level_category_name,shop_id,shop_url")
       });
       return json({ok:true,data:{products:products(data).map(mapProduct).filter(Boolean),source:"aliexpress-direct"}});
     }
