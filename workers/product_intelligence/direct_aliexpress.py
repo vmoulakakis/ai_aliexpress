@@ -11,7 +11,7 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call  # noqa:E402
 
-ALIEXPRESS_GATEWAY=os.getenv("ALIEXPRESS_GATEWAY","https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/direct-aliexpress")
+ALIEXPRESS_GATEWAY=os.getenv("ALIEXPRESS_GATEWAY","https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate")
 MARKET=os.getenv("MARKET_CODE","GR")
 MIN_COMMISSION_EUR=Decimal("10")
 PAGE_SIZE=min(50,max(1,int(os.getenv("ALIEXPRESS_PAGE_SIZE","30"))))
@@ -32,11 +32,46 @@ def commission(price:Any,commission_rate:Any)->Decimal|None:
     return None if p is None or r is None else (p*r).quantize(Decimal("0.01"))
 
 def call_api(payload:dict[str,Any])->dict[str,Any]:
-    r=requests.post(ALIEXPRESS_GATEWAY,json=payload,timeout=TIMEOUT)
+    # Adapter for the proven TravelAI AliExpress gateway. It owns the
+    # credentials; this backend owns intelligence, persistence and judgment.
+    action=str(payload.get("action") or "search")
+    if action not in ("search","hotproducts"):
+        raise RuntimeError(f"unsupported_sourcing_action:{action}")
+    body={
+      "action":"search",
+      "query":str(payload.get("keywords") or payload.get("query") or "").strip(),
+      "shipToCountry":str(payload.get("ship_to") or MARKET),
+      "currency":str(payload.get("currency") or "EUR"),
+      "page":int(payload.get("page") or 1),
+      "pageSize":int(payload.get("page_size") or PAGE_SIZE),
+    }
+    if payload.get("sort"):
+      body["sort"]=str(payload["sort"])
+    r=requests.post(ALIEXPRESS_GATEWAY,json=body,timeout=TIMEOUT)
     r.raise_for_status()
-    body=r.json()
-    if not body.get("ok"):raise RuntimeError(body)
-    return body.get("data") or {}
+    data=r.json()
+    products=[]
+    for x in list(data.get("products") or []):
+      products.append({
+        "product_id":x.get("productId"),
+        "product_title":x.get("title"),
+        "product_main_image_url":x.get("imageUrl"),
+        "product_detail_url":x.get("productUrl"),
+        "promotion_link":x.get("promotionLink"),
+        "sale_price":x.get("price"),
+        "original_price":x.get("originalPrice"),
+        "commission_rate":x.get("commissionRate"),
+        "evaluate_rate":x.get("positiveFeedbackRate"),
+        "lastest_volume":x.get("sales"),
+        "second_level_category_name":x.get("category"),
+        "shop_id":x.get("shopId"),
+        "shop_url":x.get("shopUrl"),
+        "ship_from_country":x.get("shipFrom"),
+        "ship_to_days":x.get("delivery"),
+        "shipping_fee":x.get("shipping"),
+        "source_payload":x,
+      })
+    return {"products":products,"source":data.get("source") or "travelai-aliexpress"}
 
 def upsert_product(p:dict[str,Any])->dict[str,Any]:
     pid,title=str(p.get("product_id") or "").strip(),str(p.get("product_title") or "").strip()
@@ -65,7 +100,10 @@ def upsert_offer(product_id:str,p:dict[str,Any])->Decimal|None:
             "expected_commission_eur":float(c) if c is not None else None,
             "promotion_url":p.get("promotion_link"),
             "seller_evidence":{"evaluate_rate":p.get("evaluate_rate"),"shop_id":p.get("shop_id"),"shop_url":p.get("shop_url")},
-            "logistics_evidence":{"ship_to_days":p.get("ship_to_days")},
+            "warehouse_country":p.get("ship_from_country"),
+            "shipping_eur":float(num(p.get("shipping_fee"))) if num(p.get("shipping_fee")) is not None else None,
+            "fulfillment_evidence":{"ship_from_country":p.get("ship_from_country")},
+            "logistics_evidence":{"ship_to_days":p.get("ship_to_days"),"shipping_fee":p.get("shipping_fee")},
             "raw_payload":p,"last_seen_at":now,"observed_at":now},
       prefer="resolution=merge-duplicates,return=minimal")
     return c
