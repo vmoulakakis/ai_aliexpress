@@ -72,27 +72,45 @@ def upsert_offer(product_id:str,p:dict[str,Any])->Decimal|None:
 
 def active_queries(limit:int):
     return list(db_call("GET","ai_source_queries",params={
-      "select":"id,query_text,problem_cluster_id,hypothesis,priority",
+      "select":"id,query_text,problem_cluster_id,hypothesis,priority,query_family,consecutive_zero_runs",
       "status":"eq.active","order":"priority.desc.nullslast,updated_at.desc","limit":str(limit)}) or [])
 
 def run_query(row,pages:int):
     stats={"seen":0,"stored":0,"promotion_eligible":0}
-    for page in range(1,pages+1):
-        data=call_api({"action":"search","keywords":row["query_text"],"ship_to":MARKET,"currency":"EUR",
-                       "page":page,"page_size":PAGE_SIZE,"sort":"LAST_VOLUME_DESC"})
-        products=list(data.get("products") or [])
-        if not products:break
-        for p in products:
-            stats["seen"]+=1
-            try:
-                saved=upsert_product(p);c=upsert_offer(saved["id"],p);stats["stored"]+=1
-                if c is not None and c>=MIN_COMMISSION_EUR:stats["promotion_eligible"]+=1
-            except Exception as exc:
-                print(json.dumps({"event":"candidate_error","error":str(exc)[:400]}))
-        time.sleep(.15)
+    error=None
+    # Search normally first; if AliExpress returns nothing, try the hot-product
+    # endpoint with the SAME AI query. This is retrieval expansion, not filtering.
+    for action in ("search","hotproducts"):
+        if stats["seen"]>0: break
+        try:
+            for page in range(1,pages+1):
+                data=call_api({"action":action,"keywords":row["query_text"],"ship_to":MARKET,"currency":"EUR",
+                               "page":page,"page_size":PAGE_SIZE,"sort":"LAST_VOLUME_DESC"})
+                products=list(data.get("products") or [])
+                if not products:break
+                for p in products:
+                    stats["seen"]+=1
+                    try:
+                        saved=upsert_product(p);comm=upsert_offer(saved["id"],p);stats["stored"]+=1
+                        if comm is not None and comm>=MIN_COMMISSION_EUR:stats["promotion_eligible"]+=1
+                    except Exception as exc:
+                        print(json.dumps({"event":"candidate_error","query":row["query_text"],"error":str(exc)[:400]}))
+                time.sleep(.15)
+        except Exception as exc:
+            error=str(exc)[:1000]
+            print(json.dumps({"event":"query_transport_error","query":row["query_text"],"action":action,"error":error}))
+            break
     now=datetime.now(timezone.utc).isoformat()
+    zero=stats["seen"]==0
+    current_zeros=int(row.get("consecutive_zero_runs") or 0)
     db_call("PATCH","ai_source_queries",params={"id":f"eq.{row['id']}"},
-            data={"last_run_at":now,"updated_at":now},prefer="return=minimal")
+            data={"last_run_at":now,"updated_at":now,
+                  "last_result_count":stats["seen"],
+                  "last_eligible_count":stats["promotion_eligible"],
+                  "consecutive_zero_runs":current_zeros+1 if zero else 0,
+                  "last_error":error,
+                  "agent_feedback":{"retrieval":"search_then_hotproducts","zero_result":zero}},
+            prefer="return=minimal")
     return stats
 
 def main():
