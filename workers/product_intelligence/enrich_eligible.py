@@ -27,6 +27,8 @@ def canonical_url(product_id:str)->str:
     return f"https://www.aliexpress.com/item/{product_id}.html"
 
 def public_page_probe(product_id:str)->dict[str,Any]:
+    if os.getenv("PUBLIC_PAGE_PROBE_ENABLED","false").lower() not in ("1","true","yes"):
+        return {"ok":False,"blocked":False,"skipped":True,"reason":"disabled_by_default_due_to_challenge_protection"}
     url=canonical_url(product_id)
     try:
         r=requests.get(url,headers={
