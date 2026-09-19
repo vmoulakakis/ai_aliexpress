@@ -56,7 +56,7 @@ function mapProduct(x:any){
     promotion_link:x.promotion_link||x.promotionLink||null,
     sale_price:n(x.sale_price??x.target_sale_price??x.app_sale_price??x.price),
     original_price:n(x.original_price??x.originalPrice??x.app_original_price),
-    commission_rate:x.commission_rate??x.hot_product_commission_rate??x.commissionRate??null,
+    commission_rate:x.commission_rate??x.commision_rate??x.hot_product_commission_rate??x.commissionRate??null,
     evaluate_rate:x.evaluate_rate??x.positive_feedback_rate??x.positiveFeedbackRate??null,
     lastest_volume:x.lastest_volume??x.latest_volume??x.sales??null,
     second_level_category_name:x.second_level_category_name||x.category_name||x.category||null,
@@ -89,7 +89,8 @@ Deno.serve(async req=>{
       const method=action==="hotproducts"?"aliexpress.affiliate.hotproduct.query":"aliexpress.affiliate.product.query";
       const data=await top(method,{
         app_signature:APP_SIGNATURE||undefined,keywords:q,page_no:Number(b.page||1),
-        page_size:Math.min(50,Number(b.page_size||20)),sort:action==="hotproducts"?"LAST_VOLUME_DESC":String(b.sort||"LAST_VOLUME_DESC"),
+        page_size:Math.min(50,Number(b.page_size||20)),
+        sort:action==="hotproducts"?"LAST_VOLUME_DESC":(b.sort?String(b.sort):undefined),
         target_currency:String(b.currency||"EUR"),target_language:String(b.language||"EN"),
         tracking_id:TRACKING_ID||undefined,ship_to_country:String(b.ship_to||"GR"),
         fields:String(b.fields||"product_id,product_title,product_main_image_url,product_detail_url,commission_rate,hot_product_commission_rate,sale_price,target_sale_price,app_sale_price,original_price,evaluate_rate,lastest_volume,first_level_category_name,second_level_category_name,shop_id,shop_url")
