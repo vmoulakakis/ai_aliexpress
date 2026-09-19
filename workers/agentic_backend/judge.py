@@ -147,30 +147,92 @@ confidence_0_100}. Scores are AI directional indices, not measured demand.""",{"
       "evidence_ids":[x["id"] for x in signals if x.get("id")],"raw_output":out},prefer="return=minimal")
 
 def judge_products():
-    rows=list(db_call("GET","ai_promotion_candidates_v",params={"select":"*","order":"observed_at.desc","limit":str(PRODUCTS)}) or [])
+    rows=list(db_call("GET","ai_promotion_candidates_v",params={
+      "select":"*","order":"observed_at.desc","limit":str(PRODUCTS)}) or [])
     for p in rows:
-      prior=list(db_call("GET","ai_product_evaluations",params={
-        "select":"id","product_candidate_id":f"eq.{p['product_candidate_id']}",
-        "offer_id":f"eq.{p['offer_id']}","evaluator_role":"eq.final_judge","limit":"1"}) or [])
-      if prior:continue
+      discoveries=list(db_call("GET","ai_product_discoveries",params={
+        "select":"problem_cluster_id,query_text,retrieval_mode,result_rank,metadata,discovered_at",
+        "product_candidate_id":f"eq.{p['product_candidate_id']}",
+        "order":"result_rank.asc.nullslast,discovered_at.desc","limit":"12"}) or [])
+      problem_ids=[]
+      for d in discoveries:
+        pid=d.get("problem_cluster_id")
+        if pid and pid not in problem_ids: problem_ids.append(pid)
+      problems=[]
+      for pid in problem_ids[:4]:
+        found=list(db_call("GET","market_problem_clusters",params={
+          "select":"id,problem_key,problem_title,problem_description,target_customer,category,subcategory,pain_severity_score,purchase_urgency_score,willingness_to_pay_score,confidence,evidence_summary",
+          "id":f"eq.{pid}","limit":"1"}) or [])
+        if found: problems.append(found[0])
+
+      primary_problem_id=problems[0]["id"] if problems else None
+      prior_params={"select":"id","product_candidate_id":f"eq.{p['product_candidate_id']}",
+                    "offer_id":f"eq.{p['offer_id']}","evaluator_role":"eq.final_judge","limit":"1"}
+      if primary_problem_id: prior_params["problem_cluster_id"]=f"eq.{primary_problem_id}"
+      prior=list(db_call("GET","ai_product_evaluations",params=prior_params) or [])
+      if prior: continue
+
+      signals=[]
+      if primary_problem_id:
+        signals=list(db_call("GET","ai_demand_signals",params={
+          "select":"source_family,source_name,signal_type,observed_value,evidence_text,observed_at,ai_relevance,ai_purchase_intent,ai_confidence,metadata",
+          "problem_cluster_id":f"eq.{primary_problem_id}","order":"observed_at.desc","limit":"40"}) or [])
+
       out=ask(JUDGE_MODEL,"""You are the final Commercial Judge for a Greek commerce opportunity.
 The only deterministic gate has already been applied: expected commission >= EUR 10.
+
+Judge PRODUCT-PROBLEM FIT first. A high-commission product is not an opportunity if it poorly solves the Greek problem.
+Use the discovery queries and returned product evidence to understand why the product was found.
+
+Evaluate holistically:
+- semantic fit to the Greek problem and target customer
+- strength of the physical solution
+- demand evidence quality (distinguish AI hypotheses from externally observed evidence)
+- likely Greek scarcity/substitute risk
+- seller/product trust evidence
+- fulfillment and landed-cost uncertainty
+- realistic commission economics
+- likely conversion friction for Greek buyers
+- seasonality/timing
+- evidence gaps
+
 Do NOT create hard thresholds for seller rating, EU warehouse, shipping, reviews, scarcity,
-trust, demand, price gap or any other product-quality factor. Evaluate them holistically.
-EU warehouse is strongly preferred evidence, not mandatory. Non-EU can win if full economics,
-seller quality, landed cost, delivery risk, scarcity, demand and expected conversion justify it.
-Return JSON {verdict:'PROMOTE'|'WATCH'|'IGNORE',confidence_0_100,opportunity_thesis,risk_thesis,
-demand_analysis,greek_market_analysis,seller_analysis,fulfillment_analysis,economics_analysis,
-conversion_analysis,evidence_used:[...],next_evidence:[...]}.""",{"candidate":p})
+trust, demand, price gap, sales volume or any other product-quality factor.
+EU warehouse is strongly preferred evidence, not mandatory.
+Zero sales does not automatically reject a product; it increases uncertainty.
+A very high price does not automatically reject a product; judge target-customer willingness to pay and conversion friction.
+Return JSON {
+ verdict:'PROMOTE'|'WATCH'|'IGNORE',
+ confidence_0_100,
+ product_problem_fit_0_100,
+ opportunity_thesis,
+ risk_thesis,
+ demand_analysis,
+ greek_market_analysis,
+ seller_analysis,
+ fulfillment_analysis,
+ economics_analysis,
+ conversion_analysis,
+ evidence_used:[...],
+ next_evidence:[...]
+}.""",
+        {"candidate":p,"discoveries":discoveries,"problems":problems,"demand_signals":signals})
+
       db_call("POST","ai_product_evaluations",data={
         "product_candidate_id":p["product_candidate_id"],"offer_id":p["offer_id"],
+        "problem_cluster_id":primary_problem_id,
         "evaluator_role":"final_judge","model_name":JUDGE_MODEL,"verdict":out.get("verdict"),
         "confidence":float(out.get("confidence_0_100") or 0)/100,
         "opportunity_thesis":out.get("opportunity_thesis"),"risk_thesis":out.get("risk_thesis"),
-        "demand_analysis":out.get("demand_analysis") or {},"greek_market_analysis":out.get("greek_market_analysis") or {},
-        "seller_analysis":out.get("seller_analysis") or {},"fulfillment_analysis":out.get("fulfillment_analysis") or {},
-        "economics_analysis":out.get("economics_analysis") or {},"conversion_analysis":out.get("conversion_analysis") or {},
-        "evidence":out.get("evidence_used") or [],"raw_output":out},prefer="return=minimal")
+        "demand_analysis":{**(out.get("demand_analysis") or {}),"product_problem_fit_0_100":out.get("product_problem_fit_0_100")},
+        "greek_market_analysis":out.get("greek_market_analysis") or {},
+        "seller_analysis":out.get("seller_analysis") or {},
+        "fulfillment_analysis":out.get("fulfillment_analysis") or {},
+        "economics_analysis":out.get("economics_analysis") or {},
+        "conversion_analysis":out.get("conversion_analysis") or {},
+        "evidence":out.get("evidence_used") or [],
+        "raw_output":{**out,"discovery_context":discoveries,"problem_context":problems}},
+        prefer="return=minimal")
 
 def main():
     topics=load_topics()
