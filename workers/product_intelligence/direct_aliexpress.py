@@ -78,28 +78,47 @@ def active_queries(limit:int):
 def run_query(row,pages:int):
     stats={"seen":0,"stored":0,"promotion_eligible":0}
     error=None
-    # Search normally first; if AliExpress returns nothing, try the hot-product
-    # endpoint with the SAME AI query. This is retrieval expansion, not filtering.
-    for action in ("search","hotproducts"):
-        if stats["seen"]>0: break
+    sample=[]
+    modes=[
+      ("search",None,"relevance"),
+      ("search","LAST_VOLUME_DESC","volume"),
+      ("hotproducts","LAST_VOLUME_DESC","hotproducts"),
+    ]
+    seen_ids=set()
+    for action,sort,mode in modes:
         try:
             for page in range(1,pages+1):
-                data=call_api({"action":action,"keywords":row["query_text"],"ship_to":MARKET,"currency":"EUR",
-                               "page":page,"page_size":PAGE_SIZE,"sort":"LAST_VOLUME_DESC"})
+                payload={"action":action,"keywords":row["query_text"],"ship_to":MARKET,"currency":"EUR",
+                         "page":page,"page_size":PAGE_SIZE}
+                if sort: payload["sort"]=sort
+                data=call_api(payload)
                 products=list(data.get("products") or [])
                 if not products:break
                 for p in products:
+                    pid=str(p.get("product_id") or "")
+                    if pid and pid in seen_ids: continue
+                    if pid: seen_ids.add(pid)
                     stats["seen"]+=1
+                    if len(sample)<20:
+                        sample.append({
+                          "product_id":pid,
+                          "title":p.get("product_title"),
+                          "category":p.get("second_level_category_name"),
+                          "price":p.get("sale_price"),
+                          "commission_rate":p.get("commission_rate"),
+                          "volume":p.get("lastest_volume"),
+                          "mode":mode
+                        })
                     try:
                         saved=upsert_product(p);comm=upsert_offer(saved["id"],p);stats["stored"]+=1
                         if comm is not None and comm>=MIN_COMMISSION_EUR:stats["promotion_eligible"]+=1
                     except Exception as exc:
                         print(json.dumps({"event":"candidate_error","query":row["query_text"],"error":str(exc)[:400]}))
-                time.sleep(.15)
+                time.sleep(.12)
         except Exception as exc:
             error=str(exc)[:1000]
-            print(json.dumps({"event":"query_transport_error","query":row["query_text"],"action":action,"error":error}))
-            break
+            print(json.dumps({"event":"query_transport_error","query":row["query_text"],"action":action,"mode":mode,"error":error}))
+            if stats["seen"]==0: break
     now=datetime.now(timezone.utc).isoformat()
     zero=stats["seen"]==0
     current_zeros=int(row.get("consecutive_zero_runs") or 0)
@@ -109,7 +128,11 @@ def run_query(row,pages:int):
                   "last_eligible_count":stats["promotion_eligible"],
                   "consecutive_zero_runs":current_zeros+1 if zero else 0,
                   "last_error":error,
-                  "agent_feedback":{"retrieval":"search_then_hotproducts","zero_result":zero}},
+                  "agent_feedback":{
+                    "retrieval_strategy":"relevance_then_volume_then_hotproducts",
+                    "zero_result":zero,
+                    "sample_results":sample
+                  }},
             prefer="return=minimal")
     return stats
 
