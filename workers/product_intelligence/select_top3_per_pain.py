@@ -61,6 +61,61 @@ def compact(p:dict):
 def heuristic_key(p):
     return (float(p.get("intelligence_confidence") or 0),int(p.get("sold_count") or 0),int(p.get("fact_count") or 0),-float(p.get("price_eur") or 0))
 
+
+CATEGORY_SYSTEM="""You are the Category Shelf Selector for a Greek AI proof-commerce marketplace.
+For ONE demand category, select the best 10 commercially eligible AliExpress candidates available now.
+This is a category shelf, not the strict pain-winner tier.
+
+Rules:
+- Prefer products that solve meaningful high-demand pains within the category.
+- Commission eligibility is already enforced upstream.
+- Rank by semantic relevance, evidence depth, seller/order signals, value, fulfillment/logistics and Greek-market usefulness.
+- Do not reject a useful candidate merely because evidence is incomplete; lower confidence instead.
+- Avoid duplicate/OEM-near-identical listings when alternatives exist.
+- Return up to 10, and use all 10 whenever 10 credible distinct candidates exist.
+- Never fabricate specs, reviews, certifications, warranty, shipping or savings.
+
+Return JSON only:
+{"selected":[{"product_candidate_id":"uuid","offer_id":"uuid","rank":1,"role":"category_best_fit|category_best_value|category_professional|category_alternative","confidence_0_100":0,"thesis":"...","risks":[]}]}"""
+
+def select_category_shelves(all_items:list[dict]):
+    alloc_rows=list(db_call("GET","ai_demand_allocation_v",params={"select":"problem_cluster_id,category,demand_score,research_priority_score,winner_cap","winner_cap":"gt.0","limit":"200"}) or [])
+    pcat={r["problem_cluster_id"]:r for r in alloc_rows}
+    groups=defaultdict(list)
+    for p in all_items:
+        a=pcat.get(p.get("problem_cluster_id"))
+        if a: groups[a.get("category") or "Unknown"].append((p,a))
+    for category,pairs in groups.items():
+        uniq=[];seen=set()
+        pairs.sort(key=lambda pa:heuristic_key(pa[0]),reverse=True)
+        for p,a in pairs:
+            k=(p.get("product_candidate_id"),p.get("offer_id"))
+            if k in seen: continue
+            seen.add(k);uniq.append((p,a))
+        pool=uniq[:60]
+        db_call("PATCH","ai_category_marketplace_selections",params={"category":f"eq.{category}","active":"eq.true"},data={"active":False},prefer="return=minimal")
+        if not pool: continue
+        payload={"category":category,"target_count":10,"candidate_pool":[{**compact(p),"problem_key":p.get("problem_key"),"problem_title":p.get("problem_title"),"demand_score":a.get("demand_score")} for p,a in pool]}
+        try:out=ask(CATEGORY_SYSTEM,payload)
+        except Exception as exc:
+            print(json.dumps({"event":"category_selection_error","category":category,"error":str(exc)[:400]}));continue
+        rank=0
+        for x in (out.get("selected") or [])[:10]:
+            pcid=str(x.get("product_candidate_id") or "")
+            match=next(((p,a) for p,a in pool if p.get("product_candidate_id")==pcid),None)
+            if not match: continue
+            p,a=match;rank+=1
+            db_call("POST","ai_category_marketplace_selections",
+              params={"on_conflict":"category,product_candidate_id,offer_id"},
+              data={"market_code":"GR","category":category,"product_candidate_id":pcid,"offer_id":p.get("offer_id"),
+                "category_rank":rank,"role":x.get("role") or "category_best_fit",
+                "confidence":float(x.get("confidence_0_100") or 0)/100,
+                "rationale":{**x,"policy":"ai-category-top10-v2","demand_score":a.get("demand_score"),"publication_tier":"AI_CATEGORY_TOP10"},
+                "model_name":MODEL,"active":True},
+              prefer="resolution=merge-duplicates,return=minimal")
+        print(json.dumps({"event":"category_top10_selected","category":category,"pool":len(pool),"selected":rank}))
+
+
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("--max-candidates-per-pain",type=int,default=40);args=ap.parse_args()
     groups=defaultdict(list)
@@ -100,6 +155,7 @@ def main():
         if rank==0:stats["empty"]+=1
         print(json.dumps({"event":"pain_selected","problem_key":a.get("problem_key"),"category":a.get("category"),
           "subcategory":a.get("subcategory"),"demand_score":a.get("demand_score"),"winner_cap":cap,"pool":len(items),"selected":rank}))
+    select_category_shelves([p for xs in groups.values() for p in xs])
     print(json.dumps({"event":"marketplace_demand_adaptive_top3_complete",**stats}))
 
 if __name__=="__main__":main()
