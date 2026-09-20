@@ -1,1 +1,6 @@
-{"name":"axizei-root-deploy","private":true,"scripts":{"build":"npm --prefix web install && npm --prefix web run build"}}
+{
+  "name":"axizei-root-deploy",
+  "private":true,
+  "scripts":{"build":"npm --prefix web install && npm --prefix web run build"},
+  "dependencies":{"next":"^16.0.0","react":"^19.0.0","react-dom":"^19.0.0"}
+}
