@@ -41,8 +41,8 @@ jobs:
       - name: Discovery corpus status
         run: echo "Deep AliExpress discovery corpus already populated; continuing with evidence enrichment and AI portfolio selection."
 
-      - name: Capture official details for all eligible discoveries
-        run: python workers/product_intelligence/enrich_eligible.py --limit 1000 --skip-ai --missing-details-only
+      - name: Evidence corpus status
+        run: echo "Using current official-detail corpus; any selected product missing detail will be enriched in the selected-only pass."
 
       - name: Select max 3 per PROMISING pain
         run: |
