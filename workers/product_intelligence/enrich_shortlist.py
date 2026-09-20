@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse,json,time
+import argparse,json,time,sys
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT))
 from workers.product_intelligence.enrich_eligible import (
     api_detail,public_page_probe,store_snapshot,candidate,discoveries,problems,latest_gap,
     existing_reviews,synthesize,TOKEN
