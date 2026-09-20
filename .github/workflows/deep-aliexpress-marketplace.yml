@@ -1,5 +1,4 @@
 name: Deep AliExpress Marketplace Research
-# trigger deep research
 
 on:
   workflow_dispatch:
@@ -15,22 +14,24 @@ on:
 permissions:
   contents: read
   id-token: write
-  models: read
+
+concurrency:
+  group: deep-aliexpress-demand-adaptive
+  cancel-in-progress: true
 
 jobs:
   deep-research:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     env:
       VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
       ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
-      GITHUB_TOKEN: ${{ github.token }}
+      AI_RESEARCH_GATEWAY: https://travel-ai-lovat-psi.vercel.app/api/internal/ai-aliexpress-research
       MARKET_CODE: GR
       ALIEXPRESS_PAGE_SIZE: 50
-      TARGET_ELIGIBLE_POOL_PER_PAIN: 15
-      MAX_NEW_QUERIES_PER_PAIN: 10
-      DEEP_RESEARCH_PAGES: 3
+      MAX_TOTAL_PAINS_PER_RUN: 60
       PUBLIC_PAGE_PROBE_ENABLED: "false"
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -38,11 +39,33 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
 
-      - name: Deep AliExpress retrieval for under-covered frozen pains
-        run: python workers/product_intelligence/deep_gap_research.py --max-pains 30 --target-pool 15 --pages 3
+      - name: Demand-adaptive deep retrieval
+        run: python workers/product_intelligence/deep_gap_research.py --max-pains 60
 
-      - name: Enrich newly eligible product evidence
-        run: python workers/product_intelligence/enrich_eligible.py --limit 600 --missing-details-only
+      - name: Enrich newly eligible evidence
+        run: python workers/product_intelligence/enrich_eligible.py --limit 800 --missing-details-only
 
-      - name: AI select max three products per pain
-        run: python workers/product_intelligence/select_top3_per_pain.py --max-candidates-per-pain 35
+      - name: Select 0-3 winners per pain using demand cap
+        run: python workers/product_intelligence/select_top3_per_pain.py --max-candidates-per-pain 40
+
+      - name: Enrich selected winners deeply
+        run: python workers/product_intelligence/enrich_eligible.py --selected-only --limit 140
+
+      - name: Final evidence-aware rerank
+        run: python workers/product_intelligence/select_top3_per_pain.py --max-candidates-per-pain 40
+
+      - name: Audit demand allocation and max-three contract
+        run: |
+          python - <<'PY'
+          import json,sys
+          sys.path.insert(0,"workers/shared")
+          from db_gateway import db_call
+          rows=db_call("GET","ai_marketplace_selections",params={"select":"problem_cluster_id,product_candidate_id,selection_rank","active":"eq.true","verdict":"eq.SELECT","limit":"500"}) or []
+          alloc=db_call("GET","ai_demand_allocation_v",params={"select":"problem_cluster_id,winner_cap,category,subcategory,demand_score","limit":"200"}) or []
+          caps={x["problem_cluster_id"]:int(x.get("winner_cap") or 0) for x in alloc}
+          by={}
+          for r in rows:by.setdefault(r["problem_cluster_id"],[]).append(r)
+          bad={k:len(v) for k,v in by.items() if len(v)>min(3,caps.get(k,0))}
+          print(json.dumps({"selected_total":len(rows),"pains_selected":len(by),"violations":bad}))
+          if bad: raise SystemExit("demand_cap_or_max3_violation")
+          PY
