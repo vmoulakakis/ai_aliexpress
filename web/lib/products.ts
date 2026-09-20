@@ -2,7 +2,7 @@ export const MARKETPLACE_API="https://gqpbskssrvpfjtujwezc.supabase.co/functions
 
 export type Product={
   selection_role?:"best_fit"|"best_value"|"professional"|"alternative_mechanism"|"BEST_FIT"|"BEST_VALUE"|"PRO"|null;
-  selection_rank?:number|null; selection_confidence?:string|number|null; selection_rationale?:any;
+  publication_tier?:"VERIFIED_PAIN_WINNER"|"AI_CATEGORY_TOP10"|string|null;\n  selection_rank?:number|null; selection_confidence?:string|number|null; selection_rationale?:any;
   product_candidate_id:string; offer_id?:string|null; source_product_id:string; title:string; category:string|null;
   product_url:string|null; image_url:string|null; price_eur:string|number|null; promotion_url:string|null;
   problem_cluster_id:string|null; problem_key:string|null; problem_title:string|null; target_customer:string|null;
@@ -22,7 +22,7 @@ export type SubcategoryAllocation=CategoryAllocation&{subcategory:string};
 export type MarketplaceData={products:Product[];categories:CategoryAllocation[];subcategories:SubcategoryAllocation[];mode:string};
 
 export async function getMarketplaceData():Promise<MarketplaceData>{
-  const r=await fetch(MARKETPLACE_API+"?limit=100&allocation=1",{next:{revalidate:300}});
+  const r=await fetch(MARKETPLACE_API+"?limit=250&allocation=1",{next:{revalidate:300}});
   if(!r.ok) throw new Error("Marketplace API failed");
   const j=await r.json();
   return {products:j.data||[],categories:j.allocation?.categories||[],subcategories:j.allocation?.subcategories||[],mode:j.mode||"UNKNOWN"};
