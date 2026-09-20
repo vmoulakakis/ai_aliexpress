@@ -14,6 +14,7 @@ const stateLabel=(p:Product)=>{
 export default function Marketplace({products}:{products:Product[]}){
   const [q,setQ]=useState("");
   const [filter,setFilter]=useState("ALL");
+  const [limit,setLimit]=useState(12);
   const problems=useMemo(()=>{
     const m=new Map<string,string>();
     products.forEach(p=>{if(p.problem_key&&p.problem_title)m.set(p.problem_key,p.problem_title)});
@@ -50,8 +51,8 @@ export default function Marketplace({products}:{products:Product[]}){
     <section className="shell problemHub reveal">
       <div className="sectionTitle"><p className="kicker">START WITH THE PAIN</p><h2>Τι θέλεις να σταματήσεις να σου κοστίζει;</h2></div>
       <div className="chips">
-        <button className={filter==="ALL"?"active":""} onClick={()=>setFilter("ALL")}>Όλα</button>
-        {problems.map(([k,t])=><button key={k} className={filter===k?"active":""} onClick={()=>setFilter(k)}>{t}</button>)}
+        <button className={filter==="ALL"?"active":""} onClick={()=>{setFilter("ALL");setLimit(12)}}>Όλα</button>
+        {problems.map(([k,t])=><button key={k} className={filter===k?"active":""} onClick={()=>{setFilter(k);setLimit(12)}}>{t}</button>)}
       </div>
     </section>
 
@@ -61,12 +62,12 @@ export default function Marketplace({products}:{products:Product[]}){
         <p>Κάθε προϊόν ανοίγει σε δική του landing page με Product Proof Passport, οικονομικό calculator, evidence ledger και τα δεδομένα που θα μπορούσαν να αλλάξουν την πρόταση.</p>
       </div>
       <div className="productGrid">
-        {visible.map((p,i)=>{
+        {visible.slice(0,limit).map((p,i)=>{
           const [lab,cls]=stateLabel(p);
           const conf=Math.round(n(p.intelligence_confidence)*100);
           return <Link href={"/product/"+p.source_product_id} className="productCard reveal" style={{animationDelay:`${Math.min(i,12)*35}ms`}} key={p.product_candidate_id}>
             <div className="imageStage">
-              {p.image_url?<img src={p.image_url} alt={p.title}/>:<div className="imageFallback">NO IMAGE</div>}
+              {p.image_url?<img src={p.image_url} alt={p.title} loading="lazy" decoding="async"/>:<div className="imageFallback">NO IMAGE</div>}
               <span className={"gapBadge "+cls}>{lab}</span>
               <span className="passportMini">PROOF PASSPORT ↗</span>
             </div>
@@ -83,6 +84,7 @@ export default function Marketplace({products}:{products:Product[]}){
           </Link>
         })}
       </div>
+      {limit<visible.length&&<div className="loadMoreWrap"><button className="loadMore" onClick={()=>setLimit(v=>v+12)}>Δείξε άλλες {Math.min(12,visible.length-limit)} λύσεις <span>↓</span></button><small>{limit} από {visible.length}</small></div>}
     </section>
 
     <section className="shell trustManifest reveal">
