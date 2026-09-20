@@ -3,6 +3,12 @@ name: Deep AliExpress Marketplace Research
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/product_intelligence/deep_gap_research.py'
+      - 'workers/product_intelligence/select_top3_per_pain.py'
+      - '.github/workflows/deep-aliexpress-marketplace.yml'
   schedule:
     - cron: '23 4 * * 2,5'
 
