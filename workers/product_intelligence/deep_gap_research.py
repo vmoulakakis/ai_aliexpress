@@ -126,7 +126,7 @@ def compact_candidate(p:dict[str,Any]):
       "source_product_id":p.get("source_product_id"),"title":p.get("title"),"category":p.get("category"),
       "price_eur":p.get("price_eur"),"expected_commission_eur":p.get("expected_commission_eur"),
       "sold_count":p.get("sold_count"),"seller_source_id":p.get("seller_source_id"),
-      "seller_quality":p.get("seller_quality"),"fulfillment":p.get("fulfillment_analysis"),
+      "seller_quality":p.get("seller_quality"),"official_detail":p.get("official_detail"),"fulfillment":p.get("fulfillment_analysis"),
       "pain_feature_map":p.get("pain_feature_map"),"winning_factors":p.get("winning_factors"),
       "dealbreakers":p.get("dealbreakers"),"evidence_gaps":p.get("evidence_gaps"),
       "intelligence_confidence":p.get("intelligence_confidence"),"fact_count":p.get("fact_count"),
