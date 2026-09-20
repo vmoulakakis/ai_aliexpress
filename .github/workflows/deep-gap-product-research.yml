@@ -13,6 +13,10 @@ permissions:
   models: read
   id-token: write
 
+concurrency:
+  group: deep-gap-product-research
+  cancel-in-progress: true
+
 jobs:
   deep-product-research:
     runs-on: ubuntu-latest
@@ -42,8 +46,8 @@ jobs:
         run: |
           python workers/product_intelligence/deep_gap_research.py             --phase discover             --opportunities TEST             --max-pains 13             --queries-per-pain 10             --pages 2             --max-candidates 100
 
-      - name: Enrich all eligible discoveries
-        run: python workers/product_intelligence/enrich_eligible.py --limit 1000
+      - name: Capture official details for all eligible discoveries
+        run: python workers/product_intelligence/enrich_eligible.py --limit 1000 --skip-ai
 
       - name: Select max 3 per PROMISING pain
         run: |
