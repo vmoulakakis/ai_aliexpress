@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call,_oidc_token
 
-AI_GATEWAY=os.getenv("AI_RESEARCH_GATEWAY","https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/ai-aliexpress-research-gateway")
+AI_GATEWAY=os.getenv("AI_RESEARCH_GATEWAY","https://travel-ai-lovat-psi.vercel.app/api/internal/ai-aliexpress-research")
 MODEL=os.getenv("DEEP_PRODUCT_RESEARCH_MODEL","deepseek-v4-pro")
 MARKET="GR"
 
