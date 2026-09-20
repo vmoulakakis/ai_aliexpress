@@ -42,7 +42,7 @@ jobs:
         run: echo "Deep AliExpress discovery corpus already populated; continuing with evidence enrichment and AI portfolio selection."
 
       - name: Capture official details for all eligible discoveries
-        run: python workers/product_intelligence/enrich_eligible.py --limit 1000 --skip-ai
+        run: python workers/product_intelligence/enrich_eligible.py --limit 1000 --skip-ai --missing-details-only
 
       - name: Select max 3 per PROMISING pain
         run: |
