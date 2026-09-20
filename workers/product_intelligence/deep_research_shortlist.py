@@ -17,7 +17,8 @@ def ask(system:str,payload:Any)->dict[str,Any]:
     token=_oidc_token()
     r=requests.post(AI_GATEWAY,headers={"Authorization":f"Bearer {token}","Content-Type":"application/json"},
       json={"system":system,"payload":payload,"max_tokens":3200},timeout=220)
-    r.raise_for_status()
+    if not r.ok:
+      raise RuntimeError(f"ai_gateway_{r.status_code}:{r.text[:700]}")
     body=r.json()
     if not body.get("ok"): raise RuntimeError(body)
     return body.get("data") or {}
