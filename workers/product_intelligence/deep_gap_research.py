@@ -222,23 +222,29 @@ Ranks must be unique 1..3 and roles unique.""",
     return sels
 
 def run_one(ctx,args,run_id):
-    strategy,queries=make_queries(ctx,args.queries_per_pain)
-    stats={"pain":ctx["cluster"]["problem_key"],"queries":len(queries),"seen":0,"stored":0,"eligible":0}
-    for i,q in enumerate(queries):
-      row=persist_query(ctx,q,i)
-      if not row: continue
-      st=direct_aliexpress.run_query(row,args.pages)
-      stats["seen"]+=st["seen"];stats["stored"]+=st["stored"];stats["eligible"]+=st["promotion_eligible"]
-      time.sleep(.15)
-    pool=candidate_pool(ctx["cluster"]["id"],args.max_candidates)
-    sels=shortlist(ctx,pool,run_id)
-    stats.update({"pool":len(pool),"selected":len(sels),"strategy":strategy,
-                  "selections":[{"id":s["product_candidate_id"],"role":s["role"],"fit":s.get("product_problem_fit_0_100")} for s in sels]})
-    print(json.dumps({"event":"pain_deep_research_complete",**stats},ensure_ascii=False))
+    stats={"pain":ctx["cluster"]["problem_key"],"queries":0,"seen":0,"stored":0,"eligible":0,"selected":0}
+    strategy=None
+    if args.phase in ("discover","all"):
+      strategy,queries=make_queries(ctx,args.queries_per_pain)
+      stats["queries"]=len(queries)
+      for i,q in enumerate(queries):
+        row=persist_query(ctx,q,i)
+        if not row: continue
+        st=direct_aliexpress.run_query(row,args.pages)
+        stats["seen"]+=st["seen"];stats["stored"]+=st["stored"];stats["eligible"]+=st["promotion_eligible"]
+        time.sleep(.15)
+    if args.phase in ("shortlist","all"):
+      pool=candidate_pool(ctx["cluster"]["id"],args.max_candidates)
+      sels=shortlist(ctx,pool,run_id)
+      stats.update({"pool":len(pool),"selected":len(sels),
+                    "selections":[{"id":s["product_candidate_id"],"role":s["role"],"fit":s.get("product_problem_fit_0_100")} for s in sels]})
+    stats["strategy"]=strategy
+    print(json.dumps({"event":"pain_deep_research_complete","phase":args.phase,**stats},ensure_ascii=False))
     return stats
 
 def main():
     ap=argparse.ArgumentParser()
+    ap.add_argument("--phase",choices=("discover","shortlist","all"),default="all")
     ap.add_argument("--opportunities",default="PROMISING,TEST")
     ap.add_argument("--max-pains",type=int,default=30)
     ap.add_argument("--queries-per-pain",type=int,default=20)
