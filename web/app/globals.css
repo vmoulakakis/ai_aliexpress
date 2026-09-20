@@ -52,6 +52,8 @@ font-family:Georgia,"Times New Roman",serif;letter-spacing:-.055em}
 .proofBars{margin:18px 0;display:grid;gap:10px}.proofBars div{height:5px;background:#e5e1d8;position:relative}.proofBars span{position:absolute;top:-14px;font-size:8px;text-transform:uppercase;color:#8a91a0}.proofBars b{display:block;height:100%;background:var(--blue);transition:.6s width}
 .cardBottom{display:flex;justify-content:space-between;align-items:center;margin-top:17px;font-size:10px}.cardBottom span{color:var(--muted);letter-spacing:.08em}.cardBottom b{font-size:11px}
 
+
+.loadMoreWrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:34px}.loadMore{border:1px solid var(--ink);background:transparent;color:var(--ink);padding:14px 18px;font-size:11px;font-weight:900;letter-spacing:.04em;cursor:pointer;transition:.25s}.loadMore:hover{background:var(--ink);color:white;transform:translateY(-2px)}.loadMore span{display:inline-block;margin-left:8px;animation:float 2s ease-in-out infinite}.loadMoreWrap small{color:var(--muted);font-size:10px}
 .trustManifest{padding:100px 0 120px;border-top:1px solid var(--line)}.trustManifest>div:first-child{display:grid;grid-template-columns:.4fr 1fr;align-items:end}.trustManifest h2{font-size:clamp(50px,6vw,82px);margin:0}
 .manifestGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);margin-top:42px;border:1px solid var(--line)}.manifestGrid article{background:var(--paper);padding:34px}.manifestGrid article>span{font:42px Georgia,serif;color:var(--blue)}.manifestGrid p{color:var(--muted);line-height:1.55}
 
