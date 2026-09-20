@@ -11,7 +11,7 @@ sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call,_oidc_token
 
 ALIEXPRESS_GATEWAY=os.getenv("ALIEXPRESS_GATEWAY","https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate")
-AI_RESEARCH_GATEWAY=os.getenv("AI_RESEARCH_GATEWAY","https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/ai-aliexpress-research-gateway")
+AI_RESEARCH_GATEWAY=os.getenv("AI_RESEARCH_GATEWAY","https://travel-ai-lovat-psi.vercel.app/api/internal/ai-aliexpress-research")
 MODEL=os.getenv("PRODUCT_INTEL_MODEL","deepseek-v4-pro")
 TOKEN=os.getenv("GITHUB_TOKEN","")
 MARKET=os.getenv("MARKET_CODE","GR")
