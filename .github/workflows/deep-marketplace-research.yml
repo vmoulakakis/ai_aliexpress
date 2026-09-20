@@ -33,8 +33,6 @@ jobs:
           python-version: '3.12'
       - run: pip install -r requirements.txt
       - name: Deep AliExpress research against frozen pains
-        run: python workers/product_intelligence/deep_marketplace_research.py --pages 1 --max-problems 25
+        run: python workers/product_intelligence/deep_marketplace_research.py --pages 3 --max-problems 25
       - name: Enrich newly eligible candidates
         run: python workers/product_intelligence/enrich_eligible.py --limit 500
-      - name: AI tournament — max 3 per pain
-        run: python workers/product_intelligence/select_marketplace_top3.py
