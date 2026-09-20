@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'workers/product_intelligence/deep_research_shortlist.py'
+      - 'workers/product_intelligence/enrich_shortlist.py'
       - '.github/workflows/deep-aliexpress-shortlist.yml'
   schedule:
     - cron: '23 4 * * 2,5'
@@ -40,8 +41,11 @@ jobs:
       - name: Broad AliExpress retrieval
         run: python workers/product_intelligence/direct_aliexpress.py --queries 180 --pages 2
 
-      - name: Enrich eligible product intelligence
-        run: python workers/product_intelligence/enrich_eligible.py --limit 500
+      - name: AI coarse comparative shortlist - max 3 per pain
+        run: python workers/product_intelligence/deep_research_shortlist.py select --problems 100 --candidate-cap 30
 
-      - name: AI comparative shortlist - max 3 per pain
+      - name: Deep-enrich only shortlisted finalists
+        run: python workers/product_intelligence/enrich_shortlist.py --limit 150
+
+      - name: AI final comparative shortlist after enrichment
         run: python workers/product_intelligence/deep_research_shortlist.py select --problems 100 --candidate-cap 30
