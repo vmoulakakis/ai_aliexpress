@@ -55,9 +55,11 @@ def ai_json(system:str,payload:Any)->dict[str,Any]:
     if not body.get("ok"): raise RuntimeError(body)
     return body.get("data") or {}
 
-def eligible(limit:int):
-    return list(db_call("GET","ai_promotion_candidates_v",params={
-      "select":"*","order":"expected_commission_eur.desc.nullslast","limit":str(limit)}) or [])
+def eligible(limit:int,selected_only:bool=False):
+    resource="ai_marketplace_selected_v" if selected_only else "ai_promotion_candidates_v"
+    order="pain_rank.asc" if selected_only else "expected_commission_eur.desc.nullslast"
+    return list(db_call("GET",resource,params={
+      "select":"*","order":order,"limit":str(limit)}) or [])
 
 def candidate(pid:str):
     rows=list(db_call("GET","ai_product_candidates",params={
@@ -198,9 +200,9 @@ def synthesize(row:dict[str,Any],cand:dict[str,Any],detail:dict[str,Any],ds,prob
     },prefer="return=minimal")
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument("--limit",type=int,default=200);ap.add_argument("--skip-ai",action="store_true")
+    ap=argparse.ArgumentParser();ap.add_argument("--limit",type=int,default=200);ap.add_argument("--skip-ai",action="store_true");ap.add_argument("--selected-only",action="store_true")
     args=ap.parse_args()
-    rows=eligible(args.limit)
+    rows=eligible(args.limit,args.selected_only)
     stats={"eligible":len(rows),"details":0,"page_accessible":0,"page_blocked":0,"intel":0,"errors":0}
     for row in rows:
       try:
