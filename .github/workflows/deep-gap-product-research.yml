@@ -57,6 +57,17 @@ jobs:
         run: |
           python workers/product_intelligence/deep_gap_research.py             --phase shortlist             --opportunities TEST             --max-pains 13             --max-candidates 100
 
+      - name: Full Product Intelligence only for selected products
+        run: python workers/product_intelligence/enrich_eligible.py --selected-only --limit 100
+
+      - name: Final re-rank PROMISING after full intelligence
+        run: |
+          python workers/product_intelligence/deep_gap_research.py             --phase shortlist             --opportunities PROMISING             --max-pains 12             --max-candidates 120
+
+      - name: Final re-rank TEST after full intelligence
+        run: |
+          python workers/product_intelligence/deep_gap_research.py             --phase shortlist             --opportunities TEST             --max-pains 13             --max-candidates 100
+
       - name: Audit shortlist cardinality
         run: |
           python - <<'PY'
