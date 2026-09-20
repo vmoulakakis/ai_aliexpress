@@ -8,11 +8,11 @@ import requests
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"workers"/"shared"))
-from db_gateway import db_call
+from db_gateway import db_call,_oidc_token
 
 ALIEXPRESS_GATEWAY=os.getenv("ALIEXPRESS_GATEWAY","https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate")
-MODEL_ENDPOINT="https://models.github.ai/inference/chat/completions"
-MODEL=os.getenv("PRODUCT_INTEL_MODEL","openai/gpt-4.1")
+AI_RESEARCH_GATEWAY=os.getenv("AI_RESEARCH_GATEWAY","https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/ai-aliexpress-research-gateway")
+MODEL=os.getenv("PRODUCT_INTEL_MODEL","deepseek-v4-pro")
 TOKEN=os.getenv("GITHUB_TOKEN","")
 MARKET=os.getenv("MARKET_CODE","GR")
 TIMEOUT=int(os.getenv("PRODUCT_INTEL_TIMEOUT_SECONDS","60"))
@@ -44,13 +44,16 @@ def public_page_probe(product_id:str)->dict[str,Any]:
         return {"ok":False,"error":str(exc)[:500]}
 
 def ai_json(system:str,payload:Any)->dict[str,Any]:
-    if not TOKEN:return {}
-    r=requests.post(MODEL_ENDPOINT,headers={"Authorization":f"Bearer {TOKEN}","Content-Type":"application/json"},
-      json={"model":MODEL,"temperature":0.1,"response_format":{"type":"json_object"},
-            "messages":[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}]},
-      timeout=120)
+    try:
+      token=_oidc_token()
+    except Exception:
+      return {}
+    r=requests.post(AI_RESEARCH_GATEWAY,headers={"Authorization":f"Bearer {token}","Content-Type":"application/json"},
+      json={"system":system,"payload":payload,"max_tokens":3600},timeout=220)
     r.raise_for_status()
-    return json.loads(r.json()["choices"][0]["message"]["content"])
+    body=r.json()
+    if not body.get("ok"): raise RuntimeError(body)
+    return body.get("data") or {}
 
 def eligible(limit:int):
     return list(db_call("GET","ai_promotion_candidates_v",params={
