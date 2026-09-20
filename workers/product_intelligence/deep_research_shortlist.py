@@ -179,7 +179,7 @@ Return strict JSON:
     "product_candidate_id":"uuid",
     "offer_id":"uuid or null",
     "rank":1,
-    "archetype":"best_overall",
+    "role":"BEST_FIT|BEST_VALUE|PRO",
     "reason":"...",
     "differentiation":"...",
     "strengths":["..."],
@@ -201,29 +201,49 @@ def select(limit:int,cap:int):
         out=ask(SELECT_SYSTEM,{"problem":topic,"frozen_gap":gap,"candidate_pool":pool})
         chosen=(out.get("selected") or [])[:3]
         valid_ids={x["product_candidate_id"]:x for x in pool}
-        # Replace this pain's shortlist atomically enough for service worker semantics.
-        db_call("DELETE","ai_pain_product_shortlist",params={"problem_cluster_id":f"eq.{topic['id']}"},prefer="return=minimal")
+        # Canonical marketplace contract: deactivate prior selections for this pain,
+        # then write up to 3 new active selections.
+        db_call("PATCH","ai_marketplace_selections",
+          params={"problem_cluster_id":f"eq.{topic['id']}","active":"eq.true"},
+          data={"active":False},prefer="return=minimal")
         rank=0
+        used_roles=set()
         for x in chosen:
             pid=str(x.get("product_candidate_id") or "")
             if pid not in valid_ids: continue
+            role=str(x.get("role") or "").upper()
+            if role not in {"BEST_FIT","BEST_VALUE","PRO"}:
+                role=("BEST_FIT" if rank==0 else "BEST_VALUE" if rank==1 else "PRO")
+            if role in used_roles: continue
             rank+=1
+            if rank>3: break
+            used_roles.add(role)
             src=valid_ids[pid]
-            db_call("POST","ai_pain_product_shortlist",data={
-              "problem_cluster_id":topic["id"],
-              "product_candidate_id":pid,
-              "offer_id":src.get("offer_id"),
-              "rank":rank,
-              "archetype":x.get("archetype"),
-              "model_name":MODEL,
-              "selection_version":"deep-shortlist-v1",
-              "selection_reason":x.get("reason"),
+            rationale={
+              "reason":x.get("reason"),
               "differentiation":x.get("differentiation"),
               "strengths":x.get("strengths") or [],
               "risks":x.get("risks") or [],
               "evidence_used":x.get("evidence_used") or [],
-              "confidence":float(x.get("confidence_0_100") or 0)/100
-            },prefer="return=minimal")
+              "pain_assessment":out.get("pain_assessment"),
+              "rejected_patterns":out.get("rejected_patterns") or [],
+              "selection_version":"deep-ai-shortlist-v2"
+            }
+            db_call("POST","ai_marketplace_selections",
+              params={"on_conflict":"problem_cluster_id,product_candidate_id,offer_id"},
+              data={
+                "market_code":"GR",
+                "problem_cluster_id":topic["id"],
+                "product_candidate_id":pid,
+                "offer_id":src.get("offer_id"),
+                "selection_role":role,
+                "selection_rank":rank,
+                "verdict":"SELECT",
+                "confidence":float(x.get("confidence_0_100") or 0)/100,
+                "rationale":rationale,
+                "model_name":MODEL,
+                "active":True
+              },prefer="resolution=merge-duplicates,return=minimal")
             selected_total+=1
         processed+=1
         print(json.dumps({"event":"pain_shortlisted","problem_key":topic.get("problem_key"),"pool":len(pool),"selected":rank}))
