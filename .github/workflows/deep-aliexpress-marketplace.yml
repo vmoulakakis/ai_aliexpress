@@ -1,0 +1,41 @@
+name: Deep AliExpress Marketplace Research
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 * * 2,5'
+
+permissions:
+  contents: read
+  id-token: write
+  models: read
+
+jobs:
+  deep-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
+      ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
+      GITHUB_TOKEN: ${{ github.token }}
+      MARKET_CODE: GR
+      ALIEXPRESS_PAGE_SIZE: 50
+      TARGET_ELIGIBLE_POOL_PER_PAIN: 15
+      MAX_NEW_QUERIES_PER_PAIN: 10
+      DEEP_RESEARCH_PAGES: 3
+      PUBLIC_PAGE_PROBE_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+
+      - name: Deep AliExpress retrieval for under-covered frozen pains
+        run: python workers/product_intelligence/deep_gap_research.py --max-pains 30 --target-pool 15 --pages 3
+
+      - name: Enrich newly eligible product evidence
+        run: python workers/product_intelligence/enrich_eligible.py --limit 600 --missing-details-only
+
+      - name: AI select max three products per pain
+        run: python workers/product_intelligence/select_top3_per_pain.py --max-candidates-per-pain 35
