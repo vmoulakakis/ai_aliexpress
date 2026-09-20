@@ -1,0 +1,40 @@
+name: Deep Marketplace Research
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/product_intelligence/deep_marketplace_research.py'
+      - 'workers/product_intelligence/select_marketplace_top3.py'
+      - '.github/workflows/deep-marketplace-research.yml'
+
+permissions:
+  contents: read
+  models: read
+  id-token: write
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
+      ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
+      GITHUB_TOKEN: ${{ github.token }}
+      MARKET_CODE: GR
+      ALIEXPRESS_PAGE_SIZE: 40
+      DEEP_RESEARCH_MODEL: openai/gpt-4.1
+      PUBLIC_PAGE_PROBE_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Deep AliExpress research against frozen pains
+        run: python workers/product_intelligence/deep_marketplace_research.py --pages 1 --max-problems 25
+      - name: Enrich newly eligible candidates
+        run: python workers/product_intelligence/enrich_eligible.py --limit 500
+      - name: AI tournament — max 3 per pain
+        run: python workers/product_intelligence/select_marketplace_top3.py
