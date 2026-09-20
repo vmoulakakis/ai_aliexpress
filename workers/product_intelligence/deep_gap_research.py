@@ -113,28 +113,112 @@ def persist_query(ctx,q:dict[str,Any],idx:int):
     return rows[0] if rows else None
 
 def candidate_pool(pid:str,limit:int):
-    rows=list(db_call("GET","ai_product_learning_v",params={
-      "select":"product_candidate_id,offer_id,source_product_id,title,category,price_eur,expected_commission_eur,commission_rate,promotion_url,problem_cluster_id,problem_key,problem_title,target_customer,greek_gap_opportunity,greek_gap_confidence,sold_count,seller_source_id,product_identity,pain_feature_map,winning_factors,dealbreakers,pros,cons,seller_quality,fulfillment_analysis,price_value_analysis,greek_fit_analysis,conversion_analysis,evidence_gaps,intelligence_confidence,fact_count,media_count,review_count,spec_count,data_completeness",
+    ds=list(db_call("GET","ai_product_discoveries",params={
+      "select":"product_candidate_id,query_text,retrieval_mode,result_rank,metadata,discovered_at",
       "problem_cluster_id":f"eq.{pid}",
-      "order":"intelligence_confidence.desc.nullslast,expected_commission_eur.desc.nullslast",
-      "limit":str(limit)}) or [])
-    return rows
+      "order":"result_rank.asc.nullslast,discovered_at.desc","limit":"1000"}) or [])
+    lineage={}
+    for d in ds:
+      x=str(d.get("product_candidate_id") or "")
+      if not x: continue
+      rec=lineage.setdefault(x,{"best_rank":999999,"discoveries":[]})
+      rank=int(d.get("result_rank") or 999999)
+      rec["best_rank"]=min(rec["best_rank"],rank)
+      if len(rec["discoveries"])<8:
+        rec["discoveries"].append({
+          "query":d.get("query_text"),"mode":d.get("retrieval_mode"),
+          "rank":d.get("result_rank"),"metadata":d.get("metadata") or {}
+        })
+    ids=sorted(lineage.keys(),key=lambda x:lineage[x]["best_rank"])
+    rows=[]
+    fields="product_candidate_id,offer_id,source_product_id,title,category,price_eur,expected_commission_eur,commission_rate,promotion_url,sold_count,seller_source_id,official_detail,product_identity,pain_feature_map,winning_factors,dealbreakers,pros,cons,seller_quality,fulfillment_analysis,price_value_analysis,greek_fit_analysis,conversion_analysis,evidence_gaps,intelligence_confidence,fact_count,media_count,review_count,spec_count,data_completeness"
+    for i in range(0,len(ids),40):
+      chunk=ids[i:i+40]
+      if not chunk: continue
+      vals=",".join(chunk)
+      got=list(db_call("GET","ai_product_learning_v",params={
+        "select":fields,"product_candidate_id":f"in.({vals})","limit":"200"}) or [])
+      for p in got:
+        pid2=str(p.get("product_candidate_id") or "")
+        if pid2 in lineage:
+          p["_pain_discovery"]=lineage[pid2]
+          rows.append(p)
+    # Broad research pool: discovery relevance first, then evidence richness.
+    rows.sort(key=lambda p:(
+      (p.get("_pain_discovery") or {}).get("best_rank",999999),
+      -(int(p.get("fact_count") or 0)),
+      -(int(p.get("sold_count") or 0))
+    ))
+    return rows[:limit]
 
 def compact_candidate(p:dict[str,Any]):
+    raw=p.get("official_detail") or {}
+    detail=raw.get("official_detail") if isinstance(raw,dict) and isinstance(raw.get("official_detail"),dict) else raw
+    if not isinstance(detail,dict): detail={}
     return {
       "product_candidate_id":p.get("product_candidate_id"),"offer_id":p.get("offer_id"),
       "source_product_id":p.get("source_product_id"),"title":p.get("title"),"category":p.get("category"),
       "price_eur":p.get("price_eur"),"expected_commission_eur":p.get("expected_commission_eur"),
       "sold_count":p.get("sold_count"),"seller_source_id":p.get("seller_source_id"),
-      "seller_quality":p.get("seller_quality"),"official_detail":p.get("official_detail"),"fulfillment":p.get("fulfillment_analysis"),
+      "discovery":p.get("_pain_discovery") or {},
+      "official_detail":{
+        "title":detail.get("title"),"category":detail.get("category"),"price":detail.get("price"),
+        "sales":detail.get("sales"),"shopId":detail.get("shopId"),
+        "positiveFeedbackRate":detail.get("positiveFeedbackRate"),
+        "shipFrom":detail.get("shipFrom"),"delivery":detail.get("delivery")
+      },
+      "seller_quality":p.get("seller_quality"),"fulfillment":p.get("fulfillment_analysis"),
       "pain_feature_map":p.get("pain_feature_map"),"winning_factors":p.get("winning_factors"),
       "dealbreakers":p.get("dealbreakers"),"evidence_gaps":p.get("evidence_gaps"),
       "intelligence_confidence":p.get("intelligence_confidence"),"fact_count":p.get("fact_count"),
       "review_count":p.get("review_count"),"spec_count":p.get("spec_count")
     }
 
+def screen_batch(ctx:dict[str,Any],batch:list[dict[str,Any]]):
+    out=ask("""You are the first-stage Product-Pain Fit Screener.
+For ONE frozen Greek pain-gap, inspect this batch of AliExpress candidates.
+Keep at most FIVE candidates from this batch for final portfolio judging.
+
+Reject semantic accidents, accessories that do not solve the pain, unrelated categories, and products whose mechanism does not plausibly address the pain.
+Do not optimize for commission. EUR 10 commission eligibility is already applied.
+Do not invent specs. Missing specs reduce certainty but are not automatic rejection.
+Consider discovery query lineage, title/category, official detail when available, seller/traction evidence, price/fulfillment uncertainty and existing product intelligence.
+
+Return strict JSON:
+{"keep":[{"product_candidate_id":"uuid","fit_reason":"...","risk":"..."}],"rejected_patterns":["..."]}""",
+      {"pain":ctx,"candidates":[compact_candidate(x) for x in batch]})
+    valid={str(x.get("product_candidate_id")) for x in batch}
+    keep=[]
+    for x in out.get("keep") or []:
+      pid=str(x.get("product_candidate_id") or "")
+      if pid in valid and pid not in [k["product_candidate_id"] for k in keep]:
+        keep.append({"product_candidate_id":pid,"fit_reason":x.get("fit_reason"),"risk":x.get("risk")})
+      if len(keep)>=5: break
+    return keep,out.get("rejected_patterns") or []
+
 def shortlist(ctx:dict[str,Any],pool:list[dict[str,Any]],run_id:str):
-    if not pool: return []
+    if not pool:
+      db_call("DELETE","ai_gap_product_shortlist",params={"problem_cluster_id":f"eq.{ctx['cluster']['id']}"})
+      return []
+
+    # AI tournament: every researched candidate gets a first-stage fit screen in bounded batches.
+    survivors=[]
+    rejected_patterns=[]
+    by_id={str(x["product_candidate_id"]):x for x in pool}
+    for i in range(0,len(pool),25):
+      kept,patterns=screen_batch(ctx,pool[i:i+25])
+      rejected_patterns.extend(patterns)
+      for k in kept:
+        pid=k["product_candidate_id"]
+        if pid in by_id and pid not in [str(x["product_candidate_id"]) for x in survivors]:
+          p=dict(by_id[pid]);p["_screen_reason"]=k.get("fit_reason");p["_screen_risk"]=k.get("risk")
+          survivors.append(p)
+
+    # Bound final comparison while preserving candidates from every batch.
+    survivors=survivors[:30]
+    if not survivors:
+      db_call("DELETE","ai_gap_product_shortlist",params={"problem_cluster_id":f"eq.{ctx['cluster']['id']}"})
+      return []
     out=ask("""You are the final Product Portfolio Selector for one FROZEN Greek pain-gap.
 You receive many AliExpress candidates discovered through broad research.
 
@@ -188,10 +272,10 @@ Return strict JSON:
  ]
 }
 Ranks must be unique 1..3 and roles unique.""",
-      {"pain":ctx,"candidate_count":len(pool),"candidates":[compact_candidate(x) for x in pool]})
+      {"pain":ctx,"candidate_count":len(pool),"screened_survivors":len(survivors),"screen_rejected_patterns":rejected_patterns,"candidates":[compact_candidate(x) for x in survivors]})
     sels=[]
     seen_products=set();seen_roles=set();seen_ranks=set()
-    valid_ids={str(x["product_candidate_id"]):(x) for x in pool}
+    valid_ids={str(x["product_candidate_id"]):(x) for x in survivors}
     for s in out.get("selections") or []:
       pid=str(s.get("product_candidate_id") or "")
       role=str(s.get("role") or "")
@@ -216,7 +300,7 @@ Ranks must be unique 1..3 and roles unique.""",
         "differentiation_score":float(s.get("differentiation_0_100") or 0)/100,
         "selection_thesis":s.get("selection_thesis"),
         "rejection_risks":s.get("rejection_risks") or [],
-        "evidence":{"items":s.get("evidence") or [],"portfolio_thesis":out.get("portfolio_thesis"),"rejected_patterns":out.get("rejected_patterns") or []},
+        "evidence":{"items":s.get("evidence") or [],"portfolio_thesis":out.get("portfolio_thesis"),"rejected_patterns":list(dict.fromkeys(rejected_patterns+(out.get("rejected_patterns") or [])))[:40]},
         "model_name":MODEL,"research_run_id":run_id,"selected_at":now,"updated_at":now
       },prefer="return=minimal")
     return sels
@@ -254,11 +338,15 @@ def main():
     run_id=f"deep-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     pains=load_pains([x.strip().upper() for x in args.opportunities.split(",") if x.strip()],args.max_pains)
     totals={"pains":len(pains),"seen":0,"stored":0,"eligible":0,"selected":0}
+    errors=[]
     for ctx in pains:
       try:
         st=run_one(ctx,args,run_id)
         for k in ("seen","stored","eligible","selected"): totals[k]+=int(st.get(k) or 0)
       except Exception as e:
-        print(json.dumps({"event":"pain_deep_research_error","pain":ctx["cluster"].get("problem_key"),"error":str(e)[:1000]}))
-    print(json.dumps({"event":"deep_gap_research_complete","run_id":run_id,**totals}))
+        errors.append({"pain":ctx["cluster"].get("problem_key"),"error":str(e)[:1000]})
+        print(json.dumps({"event":"pain_deep_research_error",**errors[-1]}))
+    print(json.dumps({"event":"deep_gap_research_complete","run_id":run_id,"errors":len(errors),**totals}))
+    if errors and args.phase=="shortlist":
+      raise SystemExit(2)
 if __name__=="__main__": main()
