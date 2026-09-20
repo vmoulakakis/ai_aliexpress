@@ -1,0 +1,66 @@
+name: Deep Gap Product Research
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deep-gap-product-research.yml'
+
+permissions:
+  contents: read
+  models: read
+
+jobs:
+  deep-product-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
+      ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
+      GITHUB_TOKEN: ${{ github.token }}
+      MARKET_CODE: GR
+      ALIEXPRESS_PAGE_SIZE: 50
+      ALIEXPRESS_TIMEOUT_SECONDS: 90
+      DEEP_RESEARCH_MODEL: openai/gpt-4.1
+      PUBLIC_PAGE_PROBE_ENABLED: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+
+      - name: Deep discover PROMISING pains
+        run: |
+          python workers/product_intelligence/deep_gap_research.py             --phase discover             --opportunities PROMISING             --max-pains 12             --queries-per-pain 14             --pages 2             --max-candidates 120
+
+      - name: Deep discover TEST pains
+        run: |
+          python workers/product_intelligence/deep_gap_research.py             --phase discover             --opportunities TEST             --max-pains 13             --queries-per-pain 10             --pages 2             --max-candidates 100
+
+      - name: Enrich all eligible discoveries
+        run: python workers/product_intelligence/enrich_eligible.py --limit 1000
+
+      - name: Select max 3 per PROMISING pain
+        run: |
+          python workers/product_intelligence/deep_gap_research.py             --phase shortlist             --opportunities PROMISING             --max-pains 12             --max-candidates 120
+
+      - name: Select max 3 per TEST pain
+        run: |
+          python workers/product_intelligence/deep_gap_research.py             --phase shortlist             --opportunities TEST             --max-pains 13             --max-candidates 100
+
+      - name: Audit shortlist cardinality
+        run: |
+          python - <<'PY'
+          import json,sys
+          sys.path.insert(0,"workers/shared")
+          from db_gateway import db_call
+          rows=db_call("GET","ai_gap_product_shortlist",params={"select":"problem_cluster_id,rank,selection_role,product_candidate_id","verdict":"eq.SELECTED","limit":"500"}) or []
+          by={}
+          for r in rows: by.setdefault(r["problem_cluster_id"],[]).append(r)
+          bad={k:v for k,v in by.items() if len(v)>3}
+          print(json.dumps({"selected_total":len(rows),"pains_selected":len(by),"max_per_pain":max([len(v) for v in by.values()] or [0]),"violations":len(bad)}))
+          if bad: raise SystemExit("max_3_per_pain_violation")
+          PY
