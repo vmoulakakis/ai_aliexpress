@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   models: read
+  id-token: write
 
 jobs:
   deep-product-research:
