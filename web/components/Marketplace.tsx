@@ -75,7 +75,7 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
       </div>
       <div className="marketOrbit reveal delay1">
         <div className="orbitCore"><span>{mode.includes("HYBRID")?"HYBRID AI":"AI MARKET"}</span><strong>{uniqueProducts.length}</strong><small>AI-selected solutions</small></div>
-        <div className="orbitTag t1">Top 10 / category</div><div className="orbitTag t2">{verifiedCount} verified</div><div className="orbitTag t3">{fallbackCount} category picks</div><div className="orbitTag t4">€10+ commission gate</div>
+        <div className="orbitTag t1">Top 10 / category</div><div className="orbitTag t2">{verifiedCount} verified</div><div className="orbitTag t3">{fallbackCount} category picks</div><div className="orbitTag t4">€10+ promoted gate</div>
       </div>
     </section>
 
@@ -86,7 +86,7 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
     <section id="demand" className="shell demandMap reveal">
       <div className="sectionHead demandHead">
         <div><p className="kicker">DEMAND-DRIVEN INVENTORY</p><h2>Κάθε category πρέπει να έχει λύσεις.</h2></div>
-        <p>Το AI δεν σταματά επειδή οι πρώτες αναζητήσεις ήταν αδύναμες. Categories με λιγότερα από 10 commission‑eligible candidates παίρνουν μεγαλύτερο query budget, περισσότερες AliExpress σελίδες και broader mechanism search μέχρι να γεμίσει το Top‑10.</p>
+        <p>Το AI δεν σταματά επειδή οι πρώτες αναζητήσεις ήταν αδύναμες. Categories με λιγότερες από 10 πραγματικές solution candidates παίρνουν μεγαλύτερο query budget, περισσότερες AliExpress σελίδες και broader mechanism search μέχρι να γεμίσει το Top‑10. Το €10 commission gate εφαρμόζεται μόνο στο promoted/verified tier.</p>
       </div>
       <div className="demandGrid">
         {demandCategories.map(c=>{
@@ -136,14 +136,14 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
           </Link>
         })}
       </div>
-      {!visible.length&&<div className="emptyState"><b>Η category βρίσκεται σε ενεργό AI research expansion.</b><span>Οι agents συνεχίζουν AliExpress discovery για να συμπληρώσουν το Top‑10 χωρίς να ρίξουν το €10 commission gate.</span></div>}
+      {!visible.length&&<div className="emptyState"><b>Η category βρίσκεται σε ενεργό AI research expansion.</b><span>Οι agents συνεχίζουν AliExpress discovery μέχρι να υπάρχει πλήρες Top‑10. Το €10 gate παραμένει μόνο για promoted/verified επιλογές.</span></div>}
       {limit<visible.length&&<div className="loadMoreWrap"><button className="loadMore" onClick={()=>setLimit(v=>v+20)}>Δείξε άλλες {Math.min(20,visible.length-limit)} λύσεις <span>↓</span></button><small>{limit} από {visible.length}</small></div>}
     </section>
 
     <section id="proof" className="shell trustManifest reveal">
       <div><p className="kicker">TWO-TIER AI SELECTION</p><h2>Πάντα λύσεις. Διαφορετικό confidence.</h2></div>
       <div className="manifestGrid">
-        <article><span>10</span><h3>Category shelf</h3><p>Κάθε demand category στοχεύει σε 10 commission‑eligible λύσεις. Χαμηλότερο evidence σημαίνει χαμηλότερο confidence, όχι μηδενικό marketplace.</p></article>
+        <article><span>10</span><h3>Category shelf</h3><p>Κάθε public demand category έχει 10 πραγματικές AI-ranked λύσεις. Το commission δεν κόβει το discovery shelf· καθορίζει αν μια λύση είναι promotable.</p></article>
         <article><span>≤3</span><h3>Verified pain winners</h3><p>Οι αυστηρότερες 0–3 επιλογές ανά pain παραμένουν ξεχωριστό premium evidence tier.</p></article>
         <article><span>AI</span><h3>Research keeps going</h3><p>Όταν μια category έχει λιγότερους από 10 eligible candidates, ο agent αυξάνει query diversity και research depth αντί να σταματά.</p></article>
       </div>
