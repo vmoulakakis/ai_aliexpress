@@ -198,10 +198,6 @@ Ranks must be unique 1..3 and roles unique.""",
       rank=int(s.get("rank") or 0)
       if pid not in valid_ids or pid in seen_products or role in seen_roles or rank in seen_ranks: continue
       if role not in ("best_overall","best_value","pro_choice") or rank not in (1,2,3): continue
-      fit=float(s.get("product_problem_fit_0_100") or 0)
-      # Semantic quality floor is not a commercial hard gate; it is a publication safety rule.
-      # AI must not publish obvious query contamination.
-      if fit < 55: continue
       seen_products.add(pid);seen_roles.add(role);seen_ranks.add(rank)
       p=valid_ids[pid]
       sels.append({**s,"offer_id":s.get("offer_id") or p.get("offer_id")})
