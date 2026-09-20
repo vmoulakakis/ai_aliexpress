@@ -33,8 +33,9 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
     return m;
   },[uniqueProducts]);
 
-  const demandCategories=useMemo(()=>categories.filter(c=>c.product_capacity>0),[categories]);
-  const categorySubs=useMemo(()=>subcategories.filter(s=>category==="ALL"||s.category===category).slice(0,16),[subcategories,category]);
+  const readyCategories=useMemo(()=>new Set([...productCounts.entries()].filter(([,count])=>count>=10).map(([name])=>name)),[productCounts]);
+  const demandCategories=useMemo(()=>categories.filter(c=>c.product_capacity>0&&readyCategories.has(c.category)),[categories,readyCategories]);
+  const categorySubs=useMemo(()=>subcategories.filter(s=>readyCategories.has(s.category)&&(category==="ALL"||s.category===category)).slice(0,16),[subcategories,category,readyCategories]);
   const problems=useMemo(()=>{
     const m=new Map<string,string>();
     uniqueProducts.filter(p=>category==="ALL"||p.problem_category===category).forEach(p=>{
