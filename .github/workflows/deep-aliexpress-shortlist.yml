@@ -1,0 +1,46 @@
+name: Deep AliExpress Research & Shortlist
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/product_intelligence/deep_research_shortlist.py'
+      - '.github/workflows/deep-aliexpress-shortlist.yml'
+  schedule:
+    - cron: '23 4 * * 2,5'
+
+permissions:
+  contents: read
+  models: read
+
+jobs:
+  deep-product-research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
+      ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
+      GITHUB_TOKEN: ${{ github.token }}
+      MARKET_CODE: GR
+      ALIEXPRESS_PAGE_SIZE: 20
+      PRODUCT_INTEL_TIMEOUT_SECONDS: 60
+      PUBLIC_PAGE_PROBE_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+
+      - name: Plan deep AliExpress query portfolios from frozen demand
+        run: python workers/product_intelligence/deep_research_shortlist.py plan --problems 100
+
+      - name: Broad AliExpress retrieval
+        run: python workers/product_intelligence/direct_aliexpress.py --queries 180 --pages 2
+
+      - name: Enrich eligible product intelligence
+        run: python workers/product_intelligence/enrich_eligible.py --limit 500
+
+      - name: AI comparative shortlist - max 3 per pain
+        run: python workers/product_intelligence/deep_research_shortlist.py select --problems 100 --candidate-cap 30
