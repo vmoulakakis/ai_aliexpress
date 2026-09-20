@@ -29,7 +29,7 @@ export default function Marketplace({products}:{products:Product[]}){
   return <main className="market">
     <section className="marketHero shell">
       <div className="marketHeroCopy reveal">
-        <p className="kicker">87 LIVE PRODUCT INTELLIGENCE PROFILES · GREECE</p>
+        <p className="kicker">AI-CURATED PRODUCT INTELLIGENCE · GREECE</p>
         <h1>Δεν ψάχνεις προϊόν.<br/><em>Ψάχνεις απόδειξη ότι αξίζει.</em></h1>
         <p className="heroBody">Marketplace που ξεκινά από το οικονομικό κόστος ενός πραγματικού προβλήματος και καταλήγει σε προϊόν μόνο όταν υπάρχει επαρκές evidence για να το εξετάσεις.</p>
         <div className="searchBar">
@@ -39,7 +39,7 @@ export default function Marketplace({products}:{products:Product[]}){
         </div>
       </div>
       <div className="marketOrbit reveal delay1">
-        <div className="orbitCore"><span>PROOF</span><strong>87</strong><small>eligible products</small></div>
+        <div className="orbitCore"><span>SHORTLIST</span><strong>{products.length}</strong><small>AI-selected products</small></div>
         <div className="orbitTag t1">Greek gap</div><div className="orbitTag t2">ROI</div><div className="orbitTag t3">Evidence</div><div className="orbitTag t4">Risk</div>
       </div>
     </section>
@@ -69,7 +69,7 @@ export default function Marketplace({products}:{products:Product[]}){
             <div className="imageStage">
               {p.image_url?<img src={p.image_url} alt={p.title} loading="lazy" decoding="async"/>:<div className="imageFallback">NO IMAGE</div>}
               <span className={"gapBadge "+cls}>{lab}</span>
-              <span className="passportMini">PROOF PASSPORT ↗</span>
+              <span className="passportMini">{p.selection_role?String(p.selection_role).replace("_"," "):"PROOF PASSPORT"} ↗</span>
             </div>
             <div className="cardBody">
               <p className="painLabel">{p.problem_title||"Product intelligence"}</p>
@@ -79,7 +79,7 @@ export default function Marketplace({products}:{products:Product[]}){
                 <div><span>Pain fit</span><b style={{width:`${Math.max(28,Math.round(n(p.greek_gap_confidence)*100))}%`}}></b></div>
                 <div><span>Evidence</span><b style={{width:`${Math.max(22,conf)}%`}}></b></div>
               </div>
-              <div className="cardBottom"><span>{p.data_completeness}</span><b>Δες αν αξίζει για μένα →</b></div>
+              <div className="cardBottom"><span>{p.selection_role?("#"+(p.selection_rank||"?")+" · "+String(p.selection_role).replace("_"," ")):p.data_completeness}</span><b>Δες αν αξίζει για μένα →</b></div>
             </div>
           </Link>
         })}
