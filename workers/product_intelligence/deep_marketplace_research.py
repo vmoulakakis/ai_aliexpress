@@ -53,35 +53,16 @@ def ensure_query(pid:str,q:str,family:str,hypothesis:str,priority:int):
     return rows[0] if rows else None
 
 def expand_queries(p:dict,gap:dict,history:list[dict]):
-    samples=[]
-    for h in history:
-      fb=h.get("agent_feedback") or {}
-      samples.extend((fb.get("sample_results") or [])[:5])
-    out=ask("""You are a senior AliExpress Product Retrieval Agent.
-Demand Intelligence is FROZEN. Do not reassess demand and do not change the Greek pain thesis.
-Your only job is to search AliExpress much more deeply for physical products that could solve this exact pain.
-
-Generate a diverse retrieval portfolio, not cosmetic keyword variants.
-Cover:
-- exact product nouns
-- underlying mechanism/technology
-- professional/B2B vocabulary
-- marketplace synonyms
-- adjacent physical mechanisms solving the same pain
-- system/component names sellers actually use
-
-Learn from prior AliExpress result titles. Reject vocabulary that produced unrelated categories.
-Prefer 2-6 word English marketplace queries, max 8 words.
-Never add Greece, review, price, commission, shipping, seller, warehouse, rating.
-Return JSON:
-{"queries":[{"query":"...","family":"exact|mechanism|professional|synonym|adjacent|component","hypothesis":"..."}]}
-Return 8-12 queries maximum.""",
-      {"problem":p,"frozen_gap":gap,"existing_queries":[h.get("query_text") for h in history],"sample_titles":samples[:30]})
+    # GitHub Models inference API was retired in 2026. Keep Demand frozen and
+    # deepen the already AI-generated query portfolio instead of silently
+    # downgrading to a heuristic keyword generator.
     clean=[]; seen=set()
-    for x in out.get("queries") or []:
-      q=" ".join(str(x.get("query") or "").split()).strip()
-      if not q or len(q.split())>8 or q.lower() in seen: continue
-      seen.add(q.lower()); clean.append({"query":q,"family":x.get("family") or "deep","hypothesis":x.get("hypothesis") or ""})
+    for h in history:
+      q=" ".join(str(h.get("query_text") or "").split()).strip()
+      if not q or q.lower() in seen: continue
+      seen.add(q.lower())
+      clean.append({"query":q,"family":h.get("query_family") or "existing_ai",
+                    "hypothesis":"existing AI-generated retrieval portfolio"})
     return clean[:12]
 
 def source_query(row:dict,pages:int):
@@ -181,8 +162,13 @@ def main():
       generated=expand_queries(p,gap,history)
       qrows=[]
       for i,x in enumerate(generated):
-        row=ensure_query(pid,x["query"],"deep_"+x["family"],x["hypothesis"],150-i)
-        if row:qrows.append(row)
+        # Reuse the canonical source-query row so discovery lineage remains exact.
+        match=next((h for h in history if str(h.get("query_text","")).strip().lower()==x["query"].lower()),None)
+        if match:
+          qrows.append({**match,"problem_cluster_id":pid})
+        else:
+          row=ensure_query(pid,x["query"],"deep_"+x["family"],x["hypothesis"],150-i)
+          if row:qrows.append(row)
       sourced=0
       for row in qrows:
         sourced+=source_query(row,max(1,args.pages))
