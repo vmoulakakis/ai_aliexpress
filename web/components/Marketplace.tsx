@@ -22,7 +22,7 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
   const uniqueProducts=useMemo(()=>{
     const seen=new Set<string>();
     return products.filter(p=>{
-      const k=(p.product_candidate_id||"")+"|"+(p.offer_id||"");
+      const k=(p.publication_tier==="AI_CATEGORY_TOP10"?(p.problem_category||"")+"|":"")+(p.product_candidate_id||"")+"|"+(p.offer_id||"");
       if(seen.has(k)) return false; seen.add(k); return true;
     });
   },[products]);
