@@ -89,6 +89,11 @@ def latest_gap(problem_id:str|None):
     return list(db_call("GET","ai_greek_gap_assessments",params={
       "select":"*","problem_cluster_id":f"eq.{problem_id}","order":"assessed_at.desc","limit":"1"}) or [])
 
+def has_detail_snapshot(pid:str)->bool:
+    rows=list(db_call("GET","ai_product_detail_snapshots",params={
+      "select":"id","product_candidate_id":f"eq.{pid}","limit":"1"}) or [])
+    return bool(rows)
+
 def existing_reviews(pid:str):
     return list(db_call("GET","ai_product_reviews",params={
       "select":"rating,review_date,reviewer_country,variant,review_text,helpful_count,image_urls,seller_reply,verified_purchase,source",
@@ -200,12 +205,14 @@ def synthesize(row:dict[str,Any],cand:dict[str,Any],detail:dict[str,Any],ds,prob
     },prefer="return=minimal")
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument("--limit",type=int,default=200);ap.add_argument("--skip-ai",action="store_true");ap.add_argument("--selected-only",action="store_true")
+    ap=argparse.ArgumentParser();ap.add_argument("--limit",type=int,default=200);ap.add_argument("--skip-ai",action="store_true");ap.add_argument("--selected-only",action="store_true");ap.add_argument("--missing-details-only",action="store_true")
     args=ap.parse_args()
     rows=eligible(args.limit,args.selected_only)
     stats={"eligible":len(rows),"details":0,"page_accessible":0,"page_blocked":0,"intel":0,"errors":0}
     for row in rows:
       try:
+        if args.missing_details_only and has_detail_snapshot(row["product_candidate_id"]):
+          continue
         cand=candidate(row["product_candidate_id"])
         product_id=str(cand.get("source_product_id") or "")
         if not product_id:continue
