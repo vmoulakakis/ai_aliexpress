@@ -7,20 +7,20 @@ import requests
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"workers"/"shared"))
-from db_gateway import db_call
+from db_gateway import db_call,_oidc_token
 
-ENDPOINT="https://models.github.ai/inference/chat/completions"
-TOKEN=os.getenv("GITHUB_TOKEN","")
-MODEL=os.getenv("DEEP_PRODUCT_RESEARCH_MODEL","openai/gpt-4.1")
+AI_GATEWAY=os.getenv("AI_RESEARCH_GATEWAY","https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/ai-aliexpress-research-gateway")
+MODEL=os.getenv("DEEP_PRODUCT_RESEARCH_MODEL","deepseek-v4-pro")
 MARKET="GR"
 
 def ask(system:str,payload:Any)->dict[str,Any]:
-    if not TOKEN: raise RuntimeError("GITHUB_TOKEN_missing")
-    r=requests.post(ENDPOINT,headers={"Authorization":f"Bearer {TOKEN}","Content-Type":"application/json"},
-      json={"model":MODEL,"temperature":0.08,"response_format":{"type":"json_object"},
-            "messages":[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}]},timeout=180)
+    token=_oidc_token()
+    r=requests.post(AI_GATEWAY,headers={"Authorization":f"Bearer {token}","Content-Type":"application/json"},
+      json={"system":system,"payload":payload,"max_tokens":3200},timeout=220)
     r.raise_for_status()
-    return json.loads(r.json()["choices"][0]["message"]["content"])
+    body=r.json()
+    if not body.get("ok"): raise RuntimeError(body)
+    return body.get("data") or {}
 
 def problems(limit:int):
     return list(db_call("GET","market_problem_clusters",params={
