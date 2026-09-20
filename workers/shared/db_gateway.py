@@ -31,8 +31,10 @@ def db_call(method,resource,params=None,data=None,prefer=None):
     for attempt in range(2):
         token=_oidc_token(force=attempt>0)
         r=requests.post(FUNCTION_URL,headers={"Authorization":f"Bearer {token}","Content-Type":"application/json"},json=payload,timeout=180)
-        if r.status_code==401 and attempt==0:continue
-        r.raise_for_status()
+        if r.status_code==401 and attempt==0:
+            continue
+        if not r.ok:
+            raise RuntimeError(f"VMDB gateway HTTP {r.status_code}: {r.text[:1500]}")
         body=r.json()
         if not body.get("ok"):raise RuntimeError(body)
         return body.get("result")
