@@ -11,9 +11,9 @@ from workers.product_intelligence.enrich_eligible import (
 from workers.shared.db_gateway import db_call
 
 def shortlist(limit:int):
-    return list(db_call("GET","ai_pain_product_shortlist",params={
-      "select":"problem_cluster_id,product_candidate_id,offer_id,rank",
-      "order":"problem_cluster_id.asc,rank.asc","limit":str(limit)}) or [])
+    return list(db_call("GET","ai_marketplace_selections",params={
+      "select":"problem_cluster_id,product_candidate_id,offer_id,selection_rank",
+      "active":"eq.true","order":"problem_cluster_id.asc,selection_rank.asc","limit":str(limit)}) or [])
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("--limit",type=int,default=150)
