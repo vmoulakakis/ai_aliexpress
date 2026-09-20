@@ -1,6 +1,10 @@
 export const MARKETPLACE_API = "https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/marketplace-products";
 
 export type Product = {
+  selection_role?: "BEST_FIT"|"BEST_VALUE"|"PRO"|null;
+  selection_rank?: number|null;
+  selection_confidence?: string|number|null;
+  selection_rationale?: any;
   product_candidate_id:string;
   source_product_id:string;
   title:string;
