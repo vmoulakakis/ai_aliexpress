@@ -6,11 +6,11 @@ import {compactTitle,money,n} from "../lib/products";
 import {directProduct} from "../lib/siteDirector";
 
 const stateLabel=(p:Product)=>{
-  if(p.publication_tier==="VERIFIED_PAIN_WINNER") return ["Verified pain winner","good"];
+  if(p.publication_tier==="VERIFIED_PAIN_WINNER") return ["VERIFIED","good"];
   const o=(p.greek_gap_opportunity||"").toUpperCase();
-  if(o==="PROMISING") return ["AI category pick","good"];
-  if(o==="TEST") return ["AI category pick","warn"];
-  return ["AI category pick","muted"];
+  if(o==="PROMISING") return ["RESEARCHED","good"];
+  if(o==="TEST") return ["DISCOVERY","warn"];
+  return ["DISCOVERY","muted"];
 };
 const roleLabel=(v:any)=>String(v||"category_solution").replaceAll("_"," ").toUpperCase();
 
@@ -18,7 +18,7 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
   const [q,setQ]=useState("");
   const [category,setCategory]=useState("ALL");
   const [problem,setProblem]=useState("ALL");
-  const [limit,setLimit]=useState(20);
+  const [limit,setLimit]=useState(18);
 
   const uniqueProducts=useMemo(()=>{
     const seen=new Set<string>();
@@ -27,6 +27,18 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
       if(seen.has(k)) return false; seen.add(k); return true;
     });
   },[products]);
+
+  const verified=useMemo(()=>uniqueProducts.filter(p=>p.publication_tier==="VERIFIED_PAIN_WINNER"),[uniqueProducts]);
+  const heroProduct=verified[0]||uniqueProducts[0];
+  const featured=useMemo(()=>[...verified].sort((a,b)=>n(b.demand_allocation_score)-n(a.demand_allocation_score)).slice(0,4),[verified]);
+  const discoveryDrops=useMemo(()=>{
+    const groups=[
+      {id:"SAVE_MONEY",title:"Save money",sub:"Λύσεις που μπορούν να κάνουν το κόστος μετρήσιμο."},
+      {id:"AVOID_DAMAGE",title:"Avoid damage",sub:"Βρες το πρόβλημα πριν γίνει ακριβή ζημιά."},
+      {id:"PROFESSIONAL_ADVANTAGE",title:"Professional edge",sub:"Εργαλεία που δίνουν specialist capability."}
+    ];
+    return groups.map(g=>({...g,items:uniqueProducts.filter(p=>directProduct(p).trigger===g.id).slice(0,4)})).filter(g=>g.items.length);
+  },[uniqueProducts]);
 
   const productCounts=useMemo(()=>{
     const m=new Map<string,number>();
@@ -62,92 +74,126 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
     return base.filter(p=>(fallbackCategory==="ALL"||p.problem_category===fallbackCategory)&&p.publication_tier==="AI_CATEGORY_TOP10");
   },[uniqueProducts,q,category,problem,selectedProblemCategory]);
 
-  const chooseCategory=(c:string)=>{setCategory(c);setProblem("ALL");setLimit(20)};
-  const verifiedCount=useMemo(()=>uniqueProducts.filter(p=>p.publication_tier==="VERIFIED_PAIN_WINNER").length,[uniqueProducts]);
+  const chooseCategory=(c:string)=>{setCategory(c);setProblem("ALL");setLimit(18)};
+  const verifiedCount=verified.length;
   const fallbackCount=uniqueProducts.length-verifiedCount;
+  const heroDirection=heroProduct?directProduct(heroProduct):null;
 
-  return <main className="market">
-    <section className="marketHero shell">
-      <div className="marketHeroCopy reveal">
-        <p className="kicker">AI DEMAND → DEEP ALIEXPRESS RESEARCH → TOP 10 / CATEGORY → MAX 3 VERIFIED / PAIN</p>
-        <h1>Δεν ψάχνεις προϊόν.<br/><em>Ψάχνεις λύση που αξίζει.</em></h1>
-        <p className="heroBody">Κάθε demand category πρέπει να έχει επιλογές. Οι agents ψάχνουν βαθιά στο AliExpress μέχρι να χτίσουν Top‑10 category shelf και, μέσα σε αυτό το universe, ξεχωρίζουν έως 3 verified winners για κάθε pain όταν το evidence είναι αρκετό.</p>
-        <div className="searchBar"><span>⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Γράψε πρόβλημα, χρήση, category ή προϊόν…" aria-label="Αναζήτηση marketplace"/><b>{visible.length}</b></div>
+  return <main className="market discoveryMarket">
+    <section className="discoveryHero shell">
+      <div className="discoveryCopy reveal">
+        <p className="kicker">CURATED BY AI · BUILT AROUND REAL PROBLEMS</p>
+        <h1>Πράγματα που δεν ήξερες ότι <em>χρειάζεσαι.</em></h1>
+        <p className="heroBody">Μέχρι να δεις τι λύνουν. Ανακαλύπτουμε προϊόντα με πραγματικό use-case, ελληνικό ενδιαφέρον και εμπορικό νόημα — και μετά σου δείχνουμε το γιατί.</p>
+        <div className="searchBar cinematicSearch"><span>⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Πες το πρόβλημα, όχι το όνομα του προϊόντος…" aria-label="Αναζήτηση marketplace"/><b>{visible.length}</b></div>
+        <div className="heroSignals"><span>{verifiedCount} verified</span><span>{fallbackCount} discoveries</span><span>{demandCategories.length} live categories</span></div>
       </div>
-      <div className="marketOrbit reveal delay1">
-        <div className="orbitCore"><span>{mode.includes("HYBRID")?"HYBRID AI":"AI MARKET"}</span><strong>{uniqueProducts.length}</strong><small>AI-selected solutions</small></div>
-        <div className="orbitTag t1">Top 10 / category</div><div className="orbitTag t2">{verifiedCount} verified</div><div className="orbitTag t3">{fallbackCount} category picks</div><div className="orbitTag t4">€10+ promoted gate</div>
-      </div>
+
+      {heroProduct&&heroDirection&&<Link href={"/product/"+heroProduct.source_product_id} className="heroProductStage reveal delay1">
+        <div className="heroProductMeta"><span>FEATURED DISCOVERY</span><b>{heroDirection.trigger.replaceAll("_"," ")}</b></div>
+        <div className="heroProductImage">{heroProduct.image_url?<img src={heroProduct.image_url} alt={heroProduct.title}/>:null}<div className="scanBeam"/></div>
+        <div className="heroProductCopy"><p>{heroDirection.cardHook}</p><h2>{compactTitle(heroProduct.title,92)}</h2><div><strong>{money(heroProduct.price_eur)}</strong><span>Open story →</span></div></div>
+      </Link>}
     </section>
 
-    <section className="proofStrip">
-      <div><b>01</b><span>Greek demand</span></div><i>→</i><div><b>02</b><span>Category quota</span></div><i>→</i><div><b>03</b><span>Deep AliExpress search</span></div><i>→</i><div><b>04</b><span>Top 10 shelf</span></div><i>→</i><div><b>05</b><span>Evidence</span></div><i>→</i><div><b>06</b><span>Verified winners</span></div>
+    <section className="manifestTicker" aria-label="How the marketplace works">
+      <span>DISCOVER</span><i>→</i><span>UNDERSTAND THE PAIN</span><i>→</i><span>SEE THE TRANSFORMATION</span><i>→</i><span>CHECK THE PROOF</span><i>→</i><span>DECIDE</span>
     </section>
 
-    <section id="demand" className="shell demandMap reveal">
-      <div className="sectionHead demandHead">
-        <div><p className="kicker">DEMAND-DRIVEN INVENTORY</p><h2>Κάθε category πρέπει να έχει λύσεις.</h2></div>
-        <p>Το AI δεν σταματά επειδή οι πρώτες αναζητήσεις ήταν αδύναμες. Categories με λιγότερες από 10 πραγματικές solution candidates παίρνουν μεγαλύτερο query budget, περισσότερες AliExpress σελίδες και broader mechanism search μέχρι να γεμίσει το Top‑10. Το €10 commission gate εφαρμόζεται μόνο στο promoted/verified tier.</p>
+    {!!featured.length&&<section className="shell editorialDrops">
+      <div className="sectionHead">
+        <div><p className="kicker">THIS WEEK'S DISCOVERIES</p><h2>Λύσεις που αξίζουν δεύτερη ματιά.</h2></div>
+        <p>Όχι επειδή είναι “viral”. Επειδή συνδυάζουν pain fit, ζήτηση, evidence και ξεκάθαρο λόγο ύπαρξης.</p>
       </div>
-      <div className="demandGrid">
+      <div className="featureMosaic">
+        {featured.map((p,i)=>{
+          const d=directProduct(p);
+          return <Link className={"featureTile tile"+i} href={"/product/"+p.source_product_id} key={p.product_candidate_id+"f"}>
+            <div className="featureIndex">0{i+1}</div>
+            <div className="featureVisual">{p.image_url?<img src={p.image_url} alt={p.title} loading="lazy"/>:null}</div>
+            <div className="featureCopy"><span>{d.trigger.replaceAll("_"," ")}</span><h3>{d.cardHook}</h3><p>{compactTitle(p.title,74)}</p><b>{money(p.price_eur)} · Explore →</b></div>
+          </Link>
+        })}
+      </div>
+    </section>}
+
+    <section id="demand" className="demandAtlas">
+      <div className="shell sectionHead">
+        <div><p className="kicker">LIVE DEMAND ATLAS</p><h2>Αγορές με πραγματικά προβλήματα.</h2></div>
+        <p>Κάθε category ανοίγει διαφορετικό discovery field. Δεν πουλάμε taxonomy· οργανώνουμε λύσεις γύρω από pains.</p>
+      </div>
+      <div className="atlasRail">
         {demandCategories.map(c=>{
           const active=category===c.category;
-          return <button key={c.category} className={"demandCard "+(active?"active":"")} onClick={()=>chooseCategory(active?"ALL":c.category)}>
-            <span>{c.category}</span><strong>{Math.round(n(c.avg_demand_score))}</strong><small>AI demand / 100</small>
-            <div><b>{Math.min(10,productCounts.get(c.category)||0)}</b>/10 shelf <i>·</i> <b>{c.active_pains}</b> pains</div>
+          return <button key={c.category} className={"atlasCard "+(active?"active":"")} onClick={()=>chooseCategory(active?"ALL":c.category)}>
+            <span>{c.category}</span><strong>{Math.round(n(c.avg_demand_score))}</strong><small>DEMAND SIGNAL</small>
+            <p>{Math.min(10,productCounts.get(c.category)||0)}/10 solutions · {c.active_pains} pains</p>
           </button>
         })}
       </div>
-      <div className="subDemand">
+      <div className="shell subDemand">
         {categorySubs.map(s=><div key={s.category+"-"+s.subcategory}><span>{s.category} / {s.subcategory}</span><b>{Math.round(n(s.avg_demand_score))}</b><small>{s.active_pains} active pain{s.active_pains===1?"":"s"}</small></div>)}
       </div>
     </section>
 
+    {discoveryDrops.map((drop,gi)=><section className={"shell commerceDrop drop"+gi} key={drop.id}>
+      <div className="dropTitle"><span>0{gi+1}</span><div><p className="kicker">{drop.id.replaceAll("_"," ")}</p><h2>{drop.title}</h2><p>{drop.sub}</p></div></div>
+      <div className="dropRail">{drop.items.map(p=>{
+        const d=directProduct(p);
+        const [lab,cls]=stateLabel(p);
+        return <Link className="dropCard" href={"/product/"+p.source_product_id} key={p.product_candidate_id+drop.id}>
+          <div className="dropImage">{p.image_url?<img src={p.image_url} alt={p.title} loading="lazy"/>:null}<span className={"gapBadge "+cls}>{lab}</span></div>
+          <div><p>{p.problem_title||d.cardHook}</p><h3>{compactTitle(p.title,64)}</h3><footer><b>{money(p.price_eur)}</b><span>See why →</span></footer></div>
+        </Link>
+      })}</div>
+    </section>)}
+
     <section className="shell problemHub reveal">
       <div className="sectionTitle"><p className="kicker">START WITH THE PAIN</p><h2>Διάλεξε το πρόβλημα — όχι το προϊόν.</h2></div>
       <div className="chips">
-        <button className={problem==="ALL"?"active":""} onClick={()=>{setProblem("ALL");setLimit(20)}}>Όλα τα pains</button>
-        {problems.map(([k,t])=><button key={k} className={problem===k?"active":""} onClick={()=>{setProblem(k);setLimit(20)}}>{t}</button>)}
+        <button className={problem==="ALL"?"active":""} onClick={()=>{setProblem("ALL");setLimit(18)}}>Όλα τα pains</button>
+        {problems.map(([k,t])=><button key={k} className={problem===k?"active":""} onClick={()=>{setProblem(k);setLimit(18)}}>{t}</button>)}
       </div>
     </section>
 
     <section id="market" className="shell productSection">
       <div className="sectionHead">
-        <div><p className="kicker">AI SOLUTION MARKETPLACE</p><h2>{visible.length} AI-selected λύσεις</h2></div>
-        <p>{problem==="ALL"?"Top‑10 category shelves μαζί με τα verified pain winners.":"Αν δεν υπάρχει verified winner για το συγκεκριμένο pain, εμφανίζονται τα καλύτερα AI category picks της ίδιας αγοράς — όχι κενή σελίδα."}</p>
+        <div><p className="kicker">DISCOVERY MARKET</p><h2>{visible.length} λύσεις για εξερεύνηση</h2></div>
+        <p>{problem==="ALL"?"Curated category shelves και verified pain winners σε ένα visual discovery field.":"Για κάθε συγκεκριμένο pain κρατάμε έως 3 verified winners και συμπληρώνουμε με researched category discoveries όπου χρειάζεται."}</p>
       </div>
-      <div className="productGrid">
+      <div className="productGrid artisticGrid">
         {visible.slice(0,limit).map((p,i)=>{
           const [lab,cls]=stateLabel(p);
           const conf=Math.round(n(p.intelligence_confidence||p.selection_confidence)*100);
           const demand=Math.round(n(p.demand_allocation_score));
-          const tier=p.publication_tier==="VERIFIED_PAIN_WINNER"?"VERIFIED":"CATEGORY TOP 10";
           const direction=directProduct(p);
-          return <Link href={"/product/"+p.source_product_id} className="productCard reveal" style={{animationDelay:`${Math.min(i,12)*35}ms`}} key={(p.product_candidate_id||"")+"|"+(p.offer_id||"")}>
+          return <Link href={"/product/"+p.source_product_id} className={"productCard reveal cardTheme-"+direction.theme} style={{animationDelay:`${Math.min(i,12)*35}ms`}} key={(p.product_candidate_id||"")+"|"+(p.offer_id||"")}>
             <div className="imageStage">
               {p.image_url?<img src={p.image_url} alt={p.title} loading="lazy" decoding="async"/>:<div className="imageFallback">NO IMAGE</div>}
-              <span className={"gapBadge "+cls}>{lab}</span><span className="passportMini">{tier} ↗</span>
+              <span className={"gapBadge "+cls}>{lab}</span><span className="passportMini">{direction.trigger.replaceAll("_"," ")} ↗</span>
             </div>
             <div className="cardBody">
               <p className="categoryLine">{p.problem_category||"Opportunity"}{p.problem_subcategory?" / "+p.problem_subcategory:""} · demand {demand||"—"}</p>
               <p className="painLabel">{direction.cardHook}</p><h3>{compactTitle(p.title)}</h3>
               <div className="cardMeta"><strong>{money(p.price_eur)}</strong><span>{(p.sold_count||0)>0?`${p.sold_count} observed sales`:"AI evidence review"}</span></div>
               <div className="proofBars"><div><span>Demand</span><b style={{width:`${Math.max(12,demand)}%`}}></b></div><div><span>Evidence</span><b style={{width:`${Math.max(18,conf)}%`}}></b></div></div>
-              <div className="cardBottom"><span>#{p.selection_rank||"?"} · {direction.trigger.replaceAll("_"," ")}</span><b>Δες πώς λύνει το πρόβλημα →</b></div>
+              <div className="cardBottom"><span>#{p.selection_rank||"?"} · {roleLabel(p.selection_role)}</span><b>Open story →</b></div>
             </div>
           </Link>
         })}
       </div>
-      {!visible.length&&<div className="emptyState"><b>Η category βρίσκεται σε ενεργό AI research expansion.</b><span>Οι agents συνεχίζουν AliExpress discovery μέχρι να υπάρχει πλήρες Top‑10. Το €10 gate παραμένει μόνο για promoted/verified επιλογές.</span></div>}
-      {limit<visible.length&&<div className="loadMoreWrap"><button className="loadMore" onClick={()=>setLimit(v=>v+20)}>Δείξε άλλες {Math.min(20,visible.length-limit)} λύσεις <span>↓</span></button><small>{limit} από {visible.length}</small></div>}
+      {!visible.length&&<div className="emptyState"><b>Η category βρίσκεται σε ενεργό AI research expansion.</b><span>Οι agents συνεχίζουν discovery μέχρι να υπάρχει ουσιαστικό set λύσεων.</span></div>}
+      {limit<visible.length&&<div className="loadMoreWrap"><button className="loadMore" onClick={()=>setLimit(v=>v+18)}>Δείξε άλλες {Math.min(18,visible.length-limit)} λύσεις <span>↓</span></button><small>{limit} από {visible.length}</small></div>}
     </section>
 
-    <section id="proof" className="shell trustManifest reveal">
-      <div><p className="kicker">TWO-TIER AI SELECTION</p><h2>Πάντα λύσεις. Διαφορετικό confidence.</h2></div>
-      <div className="manifestGrid">
-        <article><span>10</span><h3>Category shelf</h3><p>Κάθε public demand category έχει 10 πραγματικές AI-ranked λύσεις. Το commission δεν κόβει το discovery shelf· καθορίζει αν μια λύση είναι promotable.</p></article>
-        <article><span>≤3</span><h3>Verified pain winners</h3><p>Οι αυστηρότερες 0–3 επιλογές ανά pain παραμένουν ξεχωριστό premium evidence tier.</p></article>
-        <article><span>AI</span><h3>Research keeps going</h3><p>Όταν μια category έχει λιγότερους από 10 eligible candidates, ο agent αυξάνει query diversity και research depth αντί να σταματά.</p></article>
+    <section id="proof" className="trustStage">
+      <div className="shell trustManifest reveal">
+        <div><p className="kicker">DESIRE, THEN PROOF</p><h2>Πρώτα καταλαβαίνεις γιατί το θέλεις. Μετά αν αξίζει να το αγοράσεις.</h2></div>
+        <div className="manifestGrid">
+          <article><span>01</span><h3>Problem first</h3><p>Κάθε προϊόν συνδέεται με συγκεκριμένο pain και buyer context.</p></article>
+          <article><span>02</span><h3>Adaptive funnel</h3><p>Άλλο funnel για energy saver, άλλο για diagnostic tool, άλλο για novelty discovery.</p></article>
+          <article><span>03</span><h3>Affiliate transparency</h3><p>Η αγορά γίνεται από το πραγματικό promotion link. Η προμήθεια δεν καθορίζει ranking.</p></article>
+        </div>
       </div>
     </section>
   </main>;
