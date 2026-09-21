@@ -102,3 +102,47 @@ font-family:Georgia,"Times New Roman",serif;letter-spacing:-.055em}
 .emptyState{border:1px dashed var(--line);padding:42px;text-align:center;display:grid;gap:8px}.emptyState span{color:var(--muted);font-size:12px}
 @media(max-width:1000px){.demandGrid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.demandMap{padding-top:65px}.demandGrid{grid-template-columns:repeat(2,1fr)}.demandCard{padding:15px}.demandCard>strong{font-size:38px}}
+
+
+/* Adaptive Site Director */
+.directorSub{font-size:17px;line-height:1.58;color:var(--muted);max-width:680px;margin:0 0 18px}
+.productName{font-size:18px!important;line-height:1.25!important;letter-spacing:-.02em!important;margin:0 0 14px!important;font-family:Inter,ui-sans-serif,system-ui,sans-serif!important;color:var(--muted);font-weight:750}
+.funnelRail{margin:10px auto 70px;border-block:1px solid var(--line);padding:18px 0;display:grid;grid-template-columns:220px 1fr;gap:22px;align-items:center}
+.funnelMeta{display:grid;gap:5px}.funnelMeta span{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.funnelMeta b{font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.funnelRail ol{list-style:none;display:flex;gap:8px;overflow-x:auto;padding:0;margin:0}
+.funnelRail li{min-width:140px;padding:11px 12px;border:1px solid var(--line);background:rgba(255,255,255,.48);font-size:10px;font-weight:800;white-space:nowrap}
+.funnelRail li span{display:block;font-size:8px;color:var(--blue);margin-bottom:5px;letter-spacing:.1em}
+
+.productPage.cinematic-dark{--paper:#080b10;--paper2:#111722;--ink:#f3f0e8;--muted:#9ca7b8;--line:#263041;--white:#121924;--blue:#5878ff;--mint:#65e5b7;--amber:#ffb547;--coral:#ff7168;background:radial-gradient(circle at 18% 10%,rgba(49,87,255,.16),transparent 28%),#080b10}
+.productPage.cinematic-dark .topNav{background:rgba(8,11,16,.82)}
+.productPage.cinematic-dark .productVisual{background:linear-gradient(145deg,#101722,#090c11)}
+.productPage.cinematic-dark .storyBlock{background:#111722}.productPage.cinematic-dark .storyBlock.dark{background:#06080d}
+.productPage.cinematic-dark .roiInputs,.productPage.cinematic-dark .knowLedger>div{background:#111722}
+.productPage.cinematic-dark .affiliateNote,.productPage.cinematic-dark .directorSub,.productPage.cinematic-dark .productName{color:#9ca7b8}
+
+.productPage.data-art{--blue:#3157ff;--mint:#c7ff4a}
+.productPage.data-art .productVisual{background:radial-gradient(circle at 50% 50%,rgba(49,87,255,.18),transparent 55%),linear-gradient(145deg,#0b1020,#11182d)}
+.productPage.data-art .productVisual img{filter:drop-shadow(0 28px 38px rgba(49,87,255,.25))}
+.productPage.data-art .funnelRail li:nth-child(2n){transform:translateY(6px)}
+
+.productPage.neo-industrial{--paper:#0c0f14;--paper2:#151a22;--ink:#ece9e1;--muted:#a6adb7;--line:#2b323c;--white:#151a22;--blue:#c7ff4a;--mint:#c7ff4a;--amber:#ffb547;background:#0c0f14}
+.productPage.neo-industrial .topNav{background:rgba(12,15,20,.9)}
+.productPage.neo-industrial .productVisual{background:linear-gradient(135deg,#141a22,#090c10)}
+.productPage.neo-industrial .storyBlock,.productPage.neo-industrial .roiInputs,.productPage.neo-industrial .knowLedger>div{background:#151a22}
+.productPage.neo-industrial .buyButton,.productPage.neo-industrial .navButton{background:#c7ff4a;color:#0c0f14}
+.productPage.neo-industrial .productName,.productPage.neo-industrial .directorSub{color:#a6adb7}
+
+.productPage.connected-calm{--paper:#eef3f4;--paper2:#e3ecee;--ink:#0d1720;--muted:#60717d;--line:#cbd9dc;--white:#f9fcfc;--blue:#1d73ea;--mint:#39c6a3;background:linear-gradient(180deg,#eef3f4,#f7faf9)}
+.productPage.connected-calm .productVisual{background:radial-gradient(circle at 50% 35%,rgba(29,115,234,.12),transparent 52%),#f8fbfb}
+
+.productPage.editorial-light .productVisual{background:linear-gradient(160deg,#ece6dc,#faf7f0)}
+.productPage.editorial-light .productVisual img{transform:scale(.94)}
+.productPage.editorial-light .productLead h1{font-style:italic}
+
+@media(max-width:700px){
+  .funnelRail{grid-template-columns:1fr;gap:12px;margin-bottom:48px}
+  .funnelRail ol{margin-inline:-3vw;padding-inline:3vw}
+  .funnelRail li{min-width:125px}
+  .directorSub{font-size:15px}
+  .productName{font-size:16px!important}
+}
