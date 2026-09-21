@@ -26,7 +26,18 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
   const seller=p.seller_quality||{};
   const pros=clean(p.pros,"pro"), cons=clean(p.cons,"con"), risks=clean(p.dealbreakers,"risk");
   const gaps=(p.evidence_gaps||[]).filter(Boolean);
-  const conf=Math.round(n(p.intelligence_confidence)*100);
+  const conf=Math.round(n(p.intelligence_confidence||p.selection_confidence)*100);
+  const marketNarrative=gap.gap_thesis||(p.greek_gap_opportunity
+    ? `Market assessment: ${p.greek_gap_opportunity} · confidence ${Math.round(n(p.greek_gap_confidence)*100)}%. Το πλήρες Product×Pain narrative δεν έχει ακόμη αναγεννηθεί για αυτή τη χρήση.`
+    : "Δεν υπάρχει ακόμη αρκετό pain-specific market evidence για ισχυρό claim.");
+  const whyBuy=pros.length?pros:[
+    p.problem_title?`Συνδέεται με το συγκεκριμένο pain: ${p.problem_title}.`:"Υπάρχει συγκεκριμένο use-case mapping.",
+    p.sold_count&&p.sold_count>0?`${p.sold_count} observed sales στο τρέχον evidence snapshot.`:"Το sales evidence δεν έχει ακόμη επιβεβαιωθεί."
+  ];
+  const whyNot=[...cons,...risks].length?[...cons,...risks].slice(0,6):[
+    "Δεν έχει ακόμη αναγεννηθεί πλήρες pain-specific intelligence corpus.",
+    "Specs, reviews, warranty και fulfillment πρέπει να ελεγχθούν πριν την τελική αγορά."
+  ];
   const direction=directProduct(p);
   const affiliate=affiliateHref(p);
   const proof=[
@@ -61,7 +72,7 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
         <h2 className="productName">{p.title}</h2>
         <p className="audience">Για: <b>{p.target_customer||"στοχευμένη χρήση"}</b></p>
         <div className="priceLine"><strong>{money(p.price_eur)}</strong><span>{p.sold_count||0} observed sales</span></div>
-        <div className="thesis"><span>WHY IT MAY MATTER</span><p>{gap.gap_thesis||"Η αγορά εμφανίζει πιθανό κενό, αλλά η τελική αξία εξαρτάται από το δικό σου use case και τα evidence gaps."}</p></div>
+        <div className="thesis"><span>WHY IT MAY MATTER</span><p>{marketNarrative}</p></div>
         <div className="heroCtas"><a className="buyButton" href={affiliate} target="_blank" rel="nofollow sponsored noopener">{direction.primaryCta}</a><a href="#roi" className="ghostButton">Υπολόγισε ROI</a></div>
         <p className="affiliateNote">Affiliate link · η προμήθεια δεν αλλάζει την τιμή για εσένα και δεν αγοράζει κατάταξη.</p>
       </div>
@@ -81,7 +92,7 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
 
     <section className="shell storyGrid">
       <article className="storyBlock"><p className="kicker">THE PAIN</p><h2>Γιατί υπάρχει αυτή η αγορά;</h2><p>{p.pain_feature_map?.[0]?.pain_description||p.problem_title}</p><blockquote>{p.problem_title}</blockquote></article>
-      <article className="storyBlock dark"><p className="kicker">THE GREEK GAP</p><h2>Τι βλέπουμε στην Ελλάδα;</h2><p>{gap.gap_thesis||"Δεν υπάρχει αρκετό verified evidence για ισχυρό claim."}</p><dl><div><dt>Supply</dt><dd>{gap.supply_state||"UNKNOWN"}</dd></div><div><dt>Competition</dt><dd>{gap.competition_state||"UNKNOWN"}</dd></div><div><dt>Buyer intent</dt><dd>{gap.buyer_intent_state||"UNKNOWN"}</dd></div></dl></article>
+      <article className="storyBlock dark"><p className="kicker">THE GREEK GAP</p><h2>Τι βλέπουμε στην Ελλάδα;</h2><p>{marketNarrative}</p><dl><div><dt>Supply</dt><dd>{gap.supply_state||"UNKNOWN"}</dd></div><div><dt>Competition</dt><dd>{gap.competition_state||"UNKNOWN"}</dd></div><div><dt>Buyer intent</dt><dd>{gap.buyer_intent_state||"UNKNOWN"}</dd></div></dl></article>
     </section>
 
     <section className="shell passportFull">
@@ -92,8 +103,8 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
     <div id="roi" className="shell"><ProductDecision product={p}/></div>
 
     <section className="shell evidenceNarrative">
-      <article className="goodPanel"><p className="kicker">WHY BUY</p><h2>Τι συνηγορεί υπέρ</h2><ul>{pros.map(x=><li key={x}>{x}</li>)}</ul></article>
-      <article className="riskPanel"><p className="kicker">WHY NOT</p><h2>Τι μπορεί να ακυρώσει την αγορά</h2><ul>{[...cons,...risks].slice(0,6).map(x=><li key={x}>{x}</li>)}</ul></article>
+      <article className="goodPanel"><p className="kicker">WHY BUY</p><h2>Τι συνηγορεί υπέρ</h2><ul>{whyBuy.map(x=><li key={x}>{x}</li>)}</ul></article>
+      <article className="riskPanel"><p className="kicker">WHY NOT</p><h2>Τι μπορεί να ακυρώσει την αγορά</h2><ul>{whyNot.map(x=><li key={x}>{x}</li>)}</ul></article>
     </section>
 
     <section className="shell changeMind">
