@@ -20,7 +20,7 @@ PRODUCTS=int(os.getenv("AGENTIC_PRODUCT_LIMIT","60"))
 def ask(model:str,system:str,payload:Any):
     if not TOKEN:raise RuntimeError("GITHUB_TOKEN_missing")
     r=requests.post(ENDPOINT,headers={"Authorization":f"Bearer {TOKEN}","Content-Type":"application/json"},
-      json={"model":model,"temperature":0.12,"response_format":{"type":"json_object"},
+      json={"model":api_model(model),"temperature":0.12,"response_format":{"type":"json_object"},
             "messages":[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}]},timeout=120)
     r.raise_for_status()
     return json.loads(r.json()["choices"][0]["message"]["content"])
