@@ -2,6 +2,7 @@ import type {Metadata} from "next";
 import Link from "next/link";
 import {notFound} from "next/navigation";
 import ProductDecision from "../../../components/ProductDecision";
+import SignatureExperience from "../../../components/SignatureExperience";
 import {getProduct,money,n} from "../../../lib/products";
 import {directProduct,affiliateHref} from "../../../lib/siteDirector";
 
@@ -77,6 +78,8 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
         <p className="affiliateNote">Affiliate link · η προμήθεια δεν αλλάζει την τιμή για εσένα και δεν αγοράζει κατάταξη.</p>
       </div>
     </section>
+
+    <div className="shell"><SignatureExperience product={p} direction={direction}/></div>
 
     <section className="shell funnelRail" aria-label="Buying journey">
       <div className="funnelMeta"><span>{direction.archetype.replaceAll("_"," ")}</span><b>{direction.trigger.replaceAll("_"," ")}</b></div>
