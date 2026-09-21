@@ -14,8 +14,8 @@ function clean(arr:any[]|null|undefined,key:string){
 export async function generateMetadata({params}:{params:Promise<{id:string}>}):Promise<Metadata>{
   const {id}=await params; const p=await getProduct(id); if(!p) return {};
   return {
-    title:(p.title_options?.[0]||`${p.title} — Αξίζει;`).slice(0,120),
-    description:(p.meta_description_options?.[0]||`Δες αν το ${p.title} αξίζει για την ελληνική αγορά.`).slice(0,180),
+    title:(p.title_options?.[0]||`${p.title} — FOUND.`).slice(0,120),
+    description:(p.meta_description_options?.[0]||`Δες τι λύνει το ${p.title}, τι evidence έχουμε και την τρέχουσα προσφορά για την ελληνική αγορά.`).slice(0,180),
     alternates:{canonical:`/product/${id}`}
   };
 }
@@ -42,7 +42,7 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
 
   return <main className={`productPage ${direction.theme}`}>
     <header className="topNav">
-      <Link className="logo" href="/">ΑΞΙΖΕΙ;<small>PROOF-COMMERCE</small></Link>
+      <Link className="logo" href="/">FOUND.<small>DISCOVERY COMMERCE</small></Link>
       <Link className="backLink" href="/">← Marketplace</Link>
       <a className="navButton" href={affiliate} target="_blank" rel="nofollow sponsored noopener">{direction.primaryCta}</a>
     </header>
