@@ -3,6 +3,7 @@ import {useMemo,useState} from "react";
 import Link from "next/link";
 import type {Product,CategoryAllocation,SubcategoryAllocation} from "../lib/products";
 import {compactTitle,money,n} from "../lib/products";
+import {directProduct} from "../lib/siteDirector";
 
 const stateLabel=(p:Product)=>{
   if(p.publication_tier==="VERIFIED_PAIN_WINNER") return ["Verified pain winner","good"];
@@ -121,6 +122,7 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
           const conf=Math.round(n(p.intelligence_confidence||p.selection_confidence)*100);
           const demand=Math.round(n(p.demand_allocation_score));
           const tier=p.publication_tier==="VERIFIED_PAIN_WINNER"?"VERIFIED":"CATEGORY TOP 10";
+          const direction=directProduct(p);
           return <Link href={"/product/"+p.source_product_id} className="productCard reveal" style={{animationDelay:`${Math.min(i,12)*35}ms`}} key={(p.product_candidate_id||"")+"|"+(p.offer_id||"")}>
             <div className="imageStage">
               {p.image_url?<img src={p.image_url} alt={p.title} loading="lazy" decoding="async"/>:<div className="imageFallback">NO IMAGE</div>}
@@ -128,10 +130,10 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
             </div>
             <div className="cardBody">
               <p className="categoryLine">{p.problem_category||"Opportunity"}{p.problem_subcategory?" / "+p.problem_subcategory:""} · demand {demand||"—"}</p>
-              <p className="painLabel">{p.problem_title||"Category solution candidate"}</p><h3>{compactTitle(p.title)}</h3>
+              <p className="painLabel">{direction.cardHook}</p><h3>{compactTitle(p.title)}</h3>
               <div className="cardMeta"><strong>{money(p.price_eur)}</strong><span>{(p.sold_count||0)>0?`${p.sold_count} observed sales`:"AI evidence review"}</span></div>
               <div className="proofBars"><div><span>Demand</span><b style={{width:`${Math.max(12,demand)}%`}}></b></div><div><span>Evidence</span><b style={{width:`${Math.max(18,conf)}%`}}></b></div></div>
-              <div className="cardBottom"><span>#{p.selection_rank||"?"} · {roleLabel(p.selection_role)}</span><b>Δες το Proof Passport →</b></div>
+              <div className="cardBottom"><span>#{p.selection_rank||"?"} · {direction.trigger.replaceAll("_"," ")}</span><b>Δες πώς λύνει το πρόβλημα →</b></div>
             </div>
           </Link>
         })}
