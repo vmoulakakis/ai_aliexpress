@@ -1,0 +1,132 @@
+{
+  "skill_name": "Adaptive_Affiliate_Marketplace_Site_Director",
+  "version": "1.0.0",
+  "objective": "Product x Pain adaptive artistic affiliate marketplace and landing-page funnel director.",
+  "principles": [
+    "Outcome before product title",
+    "PRODUCT x PAIN, never product alone",
+    "Use real promotion_url; never invent affiliate links",
+    "Desire first, proof before final CTA",
+    "One signature interaction per page",
+    "Mobile conversion and performance override spectacle"
+  ],
+  "archetypes": {
+    "INVISIBLE_PROBLEM_SOLVER": {
+      "signals": [
+        "thermal",
+        "leak",
+        "moisture",
+        "detector",
+        "diagnostic",
+        "inspection",
+        "sensor"
+      ],
+      "theme": "CINEMATIC_DARK",
+      "trigger": "AVOID_DAMAGE",
+      "interaction": "problem_reveal_scan"
+    },
+    "MONEY_SAVER": {
+      "signals": [
+        "energy",
+        "power",
+        "electricity",
+        "consumption",
+        "saving",
+        "efficiency",
+        "solar"
+      ],
+      "theme": "DATA_ART",
+      "trigger": "SAVE_MONEY",
+      "interaction": "live_roi_payback"
+    },
+    "PROFESSIONAL_EDGE": {
+      "signals": [
+        "workshop",
+        "automotive",
+        "construction",
+        "professional",
+        "industrial",
+        "meter",
+        "tester",
+        "scope"
+      ],
+      "theme": "NEO_INDUSTRIAL",
+      "trigger": "PROFESSIONAL_ADVANTAGE",
+      "interaction": "annotated_product_explorer"
+    },
+    "REMOTE_CONTROL": {
+      "signals": [
+        "remote",
+        "wifi",
+        "gps",
+        "monitor",
+        "tracking",
+        "alarm",
+        "property"
+      ],
+      "theme": "CONNECTED_CALM",
+      "trigger": "GAIN_CONTROL",
+      "interaction": "remote_status_simulation"
+    },
+    "NOVELTY_DISCOVERY": {
+      "signals": [
+        "gadget",
+        "unique",
+        "portable",
+        "mini",
+        "smart",
+        "novel"
+      ],
+      "theme": "EDITORIAL_LIGHT",
+      "trigger": "CURIOSITY",
+      "interaction": "product_theatre_reveal"
+    },
+    "TRANSFORMATION_PRODUCT": {
+      "signals": [
+        "clean",
+        "repair",
+        "upgrade",
+        "restore",
+        "lighting",
+        "home"
+      ],
+      "theme": "EDITORIAL_LIGHT",
+      "trigger": "TRANSFORMATION",
+      "interaction": "before_after"
+    }
+  },
+  "funnel": [
+    "HOOK",
+    "DESIRE",
+    "MECHANISM",
+    "PERSONAL_VALUE",
+    "PROOF",
+    "COUNTER_EVIDENCE",
+    "AFFILIATE_CONVERSION"
+  ],
+  "frameworks": [
+    "Next.js",
+    "TypeScript",
+    "GSAP ScrollTrigger",
+    "Motion/Framer Motion",
+    "SVG/Canvas/D3",
+    "Three.js/React Three Fiber only when material"
+  ],
+  "marketplace": {
+    "home": "12-20 curated high-desire discoveries",
+    "category": "Top 10",
+    "pain": "max 3 differentiated products",
+    "card": "outcome first, product title second"
+  },
+  "affiliate": {
+    "href": "promotion_url || product_url",
+    "rel": "nofollow sponsored noopener",
+    "disclosure": "Affiliate commission does not determine ranking and does not change shopper price."
+  },
+  "performance": {
+    "LCP": "<=2.5s",
+    "INP": "<=200ms",
+    "CLS": "<=0.1",
+    "reduced_motion": true
+  }
+}
