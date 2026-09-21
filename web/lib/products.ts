@@ -71,7 +71,7 @@ export async function getMarketplaceData():Promise<MarketplaceData>{
 }
 export async function getProducts():Promise<Product[]>{return (await getMarketplaceData()).products}
 export async function getProduct(id:string):Promise<Product|null>{
-  const r=await fetch(MARKETPLACE_API+"?id="+encodeURIComponent(id),{next:{revalidate:300}});
+  const r=await fetch(MARKETPLACE_API+"?id="+encodeURIComponent(id),{cache:"no-store"});
   if(!r.ok)return null;
   const j=await r.json();
   return j.data||null;
