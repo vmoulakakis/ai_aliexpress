@@ -52,7 +52,7 @@ SOURCE_PLANS=[
 def ai_json(system:str,payload:Any)->dict[str,Any]:
     if not TOKEN:return {}
     r=requests.post(MODEL_ENDPOINT,headers={"Authorization":f"Bearer {TOKEN}","Content-Type":"application/json"},
-      json={"model":MODEL,"temperature":0.1,"response_format":{"type":"json_object"},
+      json={"model":api_model(MODEL),"temperature":0.1,"response_format":{"type":"json_object"},
             "messages":[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}]},timeout=90)
     r.raise_for_status()
     return json.loads(r.json()["choices"][0]["message"]["content"])
