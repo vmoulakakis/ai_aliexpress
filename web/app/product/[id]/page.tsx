@@ -3,6 +3,7 @@ import Link from "next/link";
 import {notFound} from "next/navigation";
 import ProductDecision from "../../../components/ProductDecision";
 import {getProduct,money,n} from "../../../lib/products";
+import {directProduct,affiliateHref} from "../../../lib/siteDirector";
 
 export const revalidate=300;
 
@@ -26,6 +27,8 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
   const pros=clean(p.pros,"pro"), cons=clean(p.cons,"con"), risks=clean(p.dealbreakers,"risk");
   const gaps=(p.evidence_gaps||[]).filter(Boolean);
   const conf=Math.round(n(p.intelligence_confidence)*100);
+  const direction=directProduct(p);
+  const affiliate=affiliateHref(p);
   const proof=[
     ["Pain relevance",p.problem_title?"Strong":"Partial","Το προϊόν έχει συνδεθεί με συγκεκριμένο pain cluster."],
     ["Greek market gap",p.greek_gap_opportunity==="PROMISING"?"Strong":"Partial",`${p.greek_gap_opportunity||"Unknown"} · confidence ${Math.round(n(p.greek_gap_confidence)*100)}%`],
@@ -37,11 +40,11 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
     ["Data freshness","Strong","Live marketplace snapshot / periodic refresh"]
   ];
 
-  return <main className="productPage">
+  return <main className={`productPage ${direction.theme}`}>
     <header className="topNav">
       <Link className="logo" href="/">ΑΞΙΖΕΙ;<small>PROOF-COMMERCE</small></Link>
       <Link className="backLink" href="/">← Marketplace</Link>
-      <a className="navButton" href={p.promotion_url||p.product_url||"#"} target="_blank" rel="nofollow sponsored noopener">Δες το listing ↗</a>
+      <a className="navButton" href={affiliate} target="_blank" rel="nofollow sponsored noopener">{direction.primaryCta}</a>
     </header>
 
     <section className="productHero shell">
@@ -53,13 +56,20 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
       </div>
       <div className="productLead reveal delay1">
         <p className="kicker">{p.problem_title}</p>
-        <h1>{p.title}</h1>
+        <h1>{direction.heroHook}</h1>
+        <p className="directorSub">{direction.heroSubhead}</p>
+        <h2 className="productName">{p.title}</h2>
         <p className="audience">Για: <b>{p.target_customer||"στοχευμένη χρήση"}</b></p>
         <div className="priceLine"><strong>{money(p.price_eur)}</strong><span>{p.sold_count||0} observed sales</span></div>
         <div className="thesis"><span>WHY IT MAY MATTER</span><p>{gap.gap_thesis||"Η αγορά εμφανίζει πιθανό κενό, αλλά η τελική αξία εξαρτάται από το δικό σου use case και τα evidence gaps."}</p></div>
-        <div className="heroCtas"><a className="buyButton" href={p.promotion_url||p.product_url||"#"} target="_blank" rel="nofollow sponsored noopener">Έλεγξε τιμή / διαθεσιμότητα ↗</a><a href="#roi" className="ghostButton">Υπολόγισε ROI</a></div>
+        <div className="heroCtas"><a className="buyButton" href={affiliate} target="_blank" rel="nofollow sponsored noopener">{direction.primaryCta}</a><a href="#roi" className="ghostButton">Υπολόγισε ROI</a></div>
         <p className="affiliateNote">Affiliate link · η προμήθεια δεν αλλάζει την τιμή για εσένα και δεν αγοράζει κατάταξη.</p>
       </div>
+    </section>
+
+    <section className="shell funnelRail" aria-label="Buying journey">
+      <div className="funnelMeta"><span>{direction.archetype.replaceAll("_"," ")}</span><b>{direction.trigger.replaceAll("_"," ")}</b></div>
+      <ol>{direction.funnel.map((stage,i)=><li key={stage}><span>{String(i+1).padStart(2,"0")}</span>{stage}</li>)}</ol>
     </section>
 
     <section className="shell decisionBand">
@@ -103,7 +113,7 @@ export default async function ProductPage({params}:{params:Promise<{id:string}>}
 
     <section className="finalProductCta">
       <div><p>Αν το οικονομικό σου threshold βγαίνει και τα missing evidence δεν είναι κρίσιμα:</p><h2>τότε έχει νόημα να εξετάσεις το listing.</h2></div>
-      <a href={p.promotion_url||p.product_url||"#"} target="_blank" rel="nofollow sponsored noopener">Δες την τρέχουσα προσφορά ↗</a>
+      <a href={affiliate} target="_blank" rel="nofollow sponsored noopener">{direction.primaryCta}</a>
     </section>
   </main>
 }
