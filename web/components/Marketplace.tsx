@@ -30,15 +30,21 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
 
   const verified=useMemo(()=>uniqueProducts.filter(p=>p.publication_tier==="VERIFIED_PAIN_WINNER"),[uniqueProducts]);
   const heroProduct=verified[0]||uniqueProducts[0];
-  const featured=useMemo(()=>[...verified].sort((a,b)=>n(b.demand_allocation_score)-n(a.demand_allocation_score)).slice(0,4),[verified]);
+  const featured=useMemo(()=>{
+    const seen=new Set<string>();
+    return [...verified].sort((a,b)=>n(b.demand_allocation_score)-n(a.demand_allocation_score)).filter(p=>{
+      const key=p.problem_key||p.problem_cluster_id||p.problem_category||p.product_candidate_id;
+      if(seen.has(String(key))) return false; seen.add(String(key)); return true;
+    }).slice(0,4);
+  },[verified]);
   const discoveryDrops=useMemo(()=>{
     const groups=[
       {id:"SAVE_MONEY",title:"Save money",sub:"Λύσεις που μπορούν να κάνουν το κόστος μετρήσιμο."},
       {id:"AVOID_DAMAGE",title:"Avoid damage",sub:"Βρες το πρόβλημα πριν γίνει ακριβή ζημιά."},
       {id:"PROFESSIONAL_ADVANTAGE",title:"Professional edge",sub:"Εργαλεία που δίνουν specialist capability."}
     ];
-    return groups.map(g=>({...g,items:uniqueProducts.filter(p=>directProduct(p).trigger===g.id).slice(0,4)})).filter(g=>g.items.length);
-  },[uniqueProducts]);
+    return groups.map(g=>({...g,items:verified.filter(p=>directProduct(p).trigger===g.id).slice(0,4)})).filter(g=>g.items.length);
+  },[uniqueProducts,verified]);
 
   const productCounts=useMemo(()=>{
     const m=new Map<string,number>();
