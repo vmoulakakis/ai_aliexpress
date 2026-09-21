@@ -2,8 +2,8 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "ΑΞΙΖΕΙ; — Πριν αγοράσεις, απόδειξέ το.",
-  description: "Evidence-first purchase decisions για την Ελλάδα: κόστος προβλήματος, αγορά, προϊόν, οικονομικά και evidence gaps πριν την αγορά.",
+  title: "FOUND. — Products you don't search for until you see what they solve.",
+  description: "Curated product discovery for Greece: real problems, adaptive funnels, market evidence and current affiliate offers.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
