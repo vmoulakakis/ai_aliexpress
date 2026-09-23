@@ -9,8 +9,8 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call  # noqa:E402
 
-ENDPOINT="https://models.github.ai/inference/chat/completions"
-TOKEN=os.getenv("GITHUB_TOKEN","")
+ENDPOINT="https://api.openai.com/v1/chat/completions"
+TOKEN=os.getenv("OPENAI_API_KEY","")
 FAST_MODEL=os.getenv("HYPOTHESIS_MODEL","openai/gpt-4.1-mini")
 SEARCH_MODEL=os.getenv("PRODUCT_SEARCH_MODEL","openai/gpt-4.1")
 JUDGE_MODEL=os.getenv("OPPORTUNITY_JUDGE_MODEL","openai/gpt-4.1")
@@ -18,9 +18,9 @@ TOPICS=int(os.getenv("AGENTIC_TOPIC_LIMIT","20"))
 PRODUCTS=int(os.getenv("AGENTIC_PRODUCT_LIMIT","60"))
 
 def ask(model:str,system:str,payload:Any):
-    if not TOKEN:raise RuntimeError("GITHUB_TOKEN_missing")
+    if not TOKEN:raise RuntimeError("OPENAI_API_KEY_missing")
     r=requests.post(ENDPOINT,headers={"Authorization":f"Bearer {TOKEN}","Content-Type":"application/json"},
-      json={"model":api_model(model),"temperature":0.12,"response_format":{"type":"json_object"},
+      json={"model":model.removeprefix("openai/"),"temperature":0.12,"response_format":{"type":"json_object"},
             "messages":[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}]},timeout=120)
     r.raise_for_status()
     return json.loads(r.json()["choices"][0]["message"]["content"])
