@@ -20,6 +20,7 @@ jobs:
       ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
       SEARXNG_BASE_URL: http://127.0.0.1:8080
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       MARKET_CODE: GR
       DEMAND_TOPIC_LIMIT: 100
       DEMAND_RESULTS_PER_QUERY: 6
@@ -44,6 +45,14 @@ jobs:
             -v "$RUNNER_TEMP/searxng-settings.yml:/etc/searxng/settings.yml:ro" \
             searxng/searxng:2026.9.5-c7f3080aa
           for i in {1..30}; do curl -fsS http://127.0.0.1:8080/ >/dev/null && break; sleep 2; done
+      - name: Check model authentication
+        run: |
+          if [ -z "$OPENAI_API_KEY" ] && [ -z "$GITHUB_TOKEN" ]; then
+            echo "::error::No model credential available"; exit 1
+          fi
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "Using GitHub Models with ephemeral GITHUB_TOKEN (models:read)"
+          fi
       - name: Harvest Greek demand evidence
         run: python workers/demand_intelligence/harvest.py
       - name: Build hypotheses and forecasts
