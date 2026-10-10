@@ -20,6 +20,7 @@ jobs:
       ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
       SEARXNG_BASE_URL: http://127.0.0.1:8080
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GITHUB_TOKEN: ${{ github.token }}
       MARKET_CODE: GR
       DEMAND_TOPIC_LIMIT: 100
       DEMAND_RESULTS_PER_QUERY: 6
@@ -31,9 +32,12 @@ jobs:
       - name: Validate LLM configuration
         shell: bash
         run: |
-          if [ -z "${OPENAI_API_KEY:-}" ]; then
-            echo '::error title=Missing OPENAI_API_KEY::Set the repository Actions secret OPENAI_API_KEY before running this workflow.'
+          if [ -z "${OPENAI_API_KEY:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+            echo '::error title=No model credentials::Neither OpenAI key nor GitHub Models token available.'
             exit 1
+          fi
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo 'OpenAI API key absent: using ephemeral GitHub Models token (models: read).'
           fi
       - run: pip install -r requirements.txt
       - name: Start SearXNG
