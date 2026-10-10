@@ -20,6 +20,7 @@ jobs:
       ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
       SEARXNG_BASE_URL: http://127.0.0.1:8080
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GITHUB_TOKEN: ${{ github.token }}
       MARKET_CODE: GR
       DEMAND_TOPIC_LIMIT: 100
       DEMAND_RESULTS_PER_QUERY: 6
@@ -28,6 +29,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Validate LLM configuration
+        shell: bash
+        run: |
+          if [ -z "${OPENAI_API_KEY:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
+            echo '::error title=No model credentials::Neither OpenAI key nor GitHub Models token available.'
+            exit 1
+          fi
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo 'OpenAI API key absent: using ephemeral GitHub Models token (models: read).'
+          fi
       - run: pip install -r requirements.txt
       - name: Start SearXNG
         run: |
@@ -43,7 +54,16 @@ jobs:
           docker run -d --name searxng -p 8080:8080 \
             -v "$RUNNER_TEMP/searxng-settings.yml:/etc/searxng/settings.yml:ro" \
             searxng/searxng:2026.9.5-c7f3080aa
-          for i in {1..30}; do curl -fsS http://127.0.0.1:8080/ >/dev/null && break; sleep 2; done
+          ready=0
+          for i in {1..30}; do
+            if curl --max-time 3 -fsS 'http://127.0.0.1:8080/search?q=healthcheck&format=json' >/dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo '::error title=SearXNG unavailable::JSON search endpoint did not become healthy.'
+            docker logs searxng --tail 100 || true
+            exit 1
+          fi
       - name: Harvest Greek demand evidence
         run: python workers/demand_intelligence/harvest.py
       - name: Build hypotheses and forecasts
