@@ -42,9 +42,13 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Start SearXNG
         run: |
-          cat > "$RUNNER_TEMP/searxng-settings.yml" <<'YAML'
+          # SearXNG rejects the built-in default secret and exits on startup.
+          # Generate a fresh ephemeral secret for each GitHub-hosted runner.
+          SEARXNG_SECRET_KEY="$(openssl rand -hex 32)"
+          cat > "$RUNNER_TEMP/searxng-settings.yml" <<YAML
           use_default_settings: true
           server:
+            secret_key: "${SEARXNG_SECRET_KEY}"
             limiter: false
           search:
             formats:
