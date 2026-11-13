@@ -175,14 +175,14 @@ Lifecycle describes demand maturity, not promotion eligibility.
 - Missing evidence lowers confidence; it does not automatically reject.
 
 ## Free-First Infrastructure
-Default implementation:
+Current implementation:
 - SearXNG for public web discovery.
-- GitHub Models for classification/synthesis.
+- OpenAI API for classification/synthesis in the `agentic-commerce-backend.yml` workflow; requires a valid `OPENAI_API_KEY` in repository Actions secrets.
 - Supabase PostgreSQL as RAG evidence store.
 - PostgreSQL FTS/metadata retrieval.
-- AliExpress API through existing TravelAI gateway.
+- AliExpress API through the existing TravelAI gateway.
 
-No new paid API is required.
+**Cost and provider contract:** The backend must not assume `GITHUB_TOKEN` provides working AI inference. The OpenAI API can incur usage charges separate from ChatGPT subscriptions. Do not mark AI research successful when the provider is not configured; fail the preflight clearly. Use `skills/ai-pipeline-reliability/SKILL.md` to verify provider behavior and actual post-run evidence.
 
 ## Optional Enrichment
 When available, Google Ads Keyword Planner can provide:
