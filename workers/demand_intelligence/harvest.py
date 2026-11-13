@@ -12,9 +12,9 @@ sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call
 
 SEARX=os.getenv("SEARXNG_BASE_URL","http://127.0.0.1:8080").rstrip("/")
-MODEL_ENDPOINT="https://models.github.ai/inference/chat/completions"
+MODEL_ENDPOINT="https://api.openai.com/v1/chat/completions"
 MODEL=os.getenv("DEMAND_AGENT_MODEL","openai/gpt-4.1-mini")
-TOKEN=os.getenv("GITHUB_TOKEN","")
+TOKEN=os.getenv("OPENAI_API_KEY","").strip()
 TOPIC_LIMIT=int(os.getenv("DEMAND_TOPIC_LIMIT","20"))
 RESULTS_PER_QUERY=int(os.getenv("DEMAND_RESULTS_PER_QUERY","6"))
 
@@ -50,12 +50,22 @@ SOURCE_PLANS=[
 ]
 
 def ai_json(system:str,payload:Any)->dict[str,Any]:
-    if not TOKEN:return {}
+    if not TOKEN:
+        raise RuntimeError("OPENAI_API_KEY missing: GitHub Models API retired on 2026-07-30")
     r=requests.post(MODEL_ENDPOINT,headers={"Authorization":f"Bearer {TOKEN}","Content-Type":"application/json"},
-      json={"model":api_model(MODEL),"temperature":0.1,"response_format":{"type":"json_object"},
+      json={"model":MODEL.removeprefix("openai/"),"temperature":0.1,"response_format":{"type":"json_object"},
             "messages":[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}]},timeout=90)
     r.raise_for_status()
-    return json.loads(r.json()["choices"][0]["message"]["content"])
+    if "json" not in r.headers.get("content-type","").lower():
+        raise RuntimeError(f"AI inference response not JSON: HTTP {r.status_code}, content_type={r.headers.get('content-type','unknown')}, body={r.text[:200]!r}")
+    try:
+        content=r.json()["choices"][0]["message"]["content"]
+        result=json.loads(content)
+    except (ValueError,KeyError,IndexError,TypeError) as e:
+        raise RuntimeError(f"AI inference returned malformed JSON completion: {e}") from e
+    if not isinstance(result,dict):
+        raise RuntimeError("AI inference JSON completion was not an object")
+    return result
 
 def search(q:str):
     r=requests.get(f"{SEARX}/search",params={"q":q,"format":"json","language":"el-GR"},timeout=45)
@@ -217,6 +227,8 @@ def assess(topic:dict[str,Any],docs:list[dict[str,Any]]):
     return result
 
 def main():
+    if not TOKEN:
+        raise SystemExit("OPENAI_API_KEY is required for demand intelligence; GitHub Models is retired.")
     total_docs=0;assessments=0
     for topic in topics():
       docs=collect_topic(topic)
@@ -230,4 +242,6 @@ def main():
         except Exception as e:
           print(json.dumps({"event":"assessment_error","problem":topic.get("problem_key"),"error":str(e)[:300]}))
     print(json.dumps({"event":"pain_gap_harvest_complete","documents":total_docs,"assessments":assessments}))
+    if total_docs > 0 and assessments == 0:
+        raise RuntimeError("Demand harvest found evidence but generated zero AI assessments; check assessment_error logs")
 if __name__=="__main__":main()
