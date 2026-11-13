@@ -9,11 +9,8 @@ ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call  # noqa:E402
 
-OPENAI_TOKEN=os.getenv("OPENAI_API_KEY","").strip()
-GITHUB_TOKEN=os.getenv("GITHUB_TOKEN","").strip()
-USE_GITHUB_MODELS=not OPENAI_TOKEN and bool(GITHUB_TOKEN)
-TOKEN=OPENAI_TOKEN or GITHUB_TOKEN
-ENDPOINT=("https://models.github.ai/inference/chat/completions" if USE_GITHUB_MODELS else "https://api.openai.com/v1/chat/completions")
+TOKEN=os.getenv("OPENAI_API_KEY","").strip()
+ENDPOINT="https://api.openai.com/v1/chat/completions"
 FAST_MODEL=os.getenv("HYPOTHESIS_MODEL","openai/gpt-4.1-mini")
 SEARCH_MODEL=os.getenv("PRODUCT_SEARCH_MODEL","openai/gpt-4.1")
 JUDGE_MODEL=os.getenv("OPPORTUNITY_JUDGE_MODEL","openai/gpt-4.1")
@@ -21,12 +18,22 @@ TOPICS=int(os.getenv("AGENTIC_TOPIC_LIMIT","20"))
 PRODUCTS=int(os.getenv("AGENTIC_PRODUCT_LIMIT","60"))
 
 def ask(model:str,system:str,payload:Any):
-    if not TOKEN:raise RuntimeError("Model credentials unavailable: configure OpenAI API key or enable GitHub Models")
+    if not TOKEN:
+        raise RuntimeError("OPENAI_API_KEY missing: GitHub Models API retired on 2026-07-30")
     r=requests.post(ENDPOINT,headers={"Authorization":f"Bearer {TOKEN}","Content-Type":"application/json"},
-      json={"model":model if USE_GITHUB_MODELS else model.removeprefix("openai/"),"temperature":0.12,"response_format":{"type":"json_object"},
+      json={"model":model.removeprefix("openai/"),"temperature":0.12,"response_format":{"type":"json_object"},
             "messages":[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}]},timeout=120)
     r.raise_for_status()
-    return json.loads(r.json()["choices"][0]["message"]["content"])
+    if "json" not in r.headers.get("content-type","").lower():
+        raise RuntimeError(f"AI inference response not JSON: HTTP {r.status_code}, content_type={r.headers.get('content-type','unknown')}, body={r.text[:200]!r}")
+    try:
+        content=r.json()["choices"][0]["message"]["content"]
+        result=json.loads(content)
+    except (ValueError,KeyError,IndexError,TypeError) as e:
+        raise RuntimeError(f"AI inference returned malformed JSON completion: {e}") from e
+    if not isinstance(result,dict):
+        raise RuntimeError("AI inference JSON completion was not an object")
+    return result
 
 def load_topics():
     return list(db_call("GET","market_problem_clusters",params={
@@ -245,6 +252,8 @@ Return JSON {
         prefer="return=minimal")
 
 def main():
+    if not TOKEN:
+        raise SystemExit("OPENAI_API_KEY is required for AI judgment; GitHub Models is retired.")
     topics=load_topics()
     for t in topics:
       try:build_queries(t)
