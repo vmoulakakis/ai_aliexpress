@@ -9,7 +9,6 @@ on:
 permissions:
   contents: read
   id-token: write
-  models: read
 
 jobs:
   backend-cycle:
@@ -29,16 +28,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validate LLM configuration
+      - name: Validate active AI provider
         shell: bash
         run: |
-          if [ -z "${OPENAI_API_KEY:-}" ] && [ -z "${GITHUB_TOKEN:-}" ]; then
-            echo '::error title=No model credentials::Neither OpenAI key nor GitHub Models token available.'
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo '::error title=AI inference not configured::GitHub Models retired on 2026-07-30. Add OPENAI_API_KEY to repository Actions secrets; do not use GITHUB_TOKEN for model inference.'
             exit 1
           fi
-          if [ -z "${OPENAI_API_KEY:-}" ]; then
-            echo 'OpenAI API key absent: using ephemeral GitHub Models token (models: read).'
-          fi
+          echo 'AI inference configured through OPENAI_API_KEY (secret value not printed).'
       - run: pip install -r requirements.txt
       - name: Start SearXNG
         run: |
