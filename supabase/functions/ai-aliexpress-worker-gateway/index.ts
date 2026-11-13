@@ -20,7 +20,7 @@ const ALLOWED_TABLES=new Set([
   "market_problem_clusters",
   "ai_source_queries","ai_product_candidates","ai_product_offers",
   "ai_demand_signals","ai_demand_forecasts","ai_product_evaluations",
-  "ai_promotion_candidates_v","ai_greek_gap_assessments",
+  "ai_promotion_candidates_v","ai_greek_gap_assessments","ai_market_evidence_documents",
   "ai_product_discoveries","ai_product_learning_v","ai_demand_allocation_v","ai_category_demand_allocation_v","ai_subcategory_demand_allocation_v",
   "ai_marketplace_selections","ai_marketplace_products_v","ai_category_marketplace_selections","ai_category_marketplace_products_v",
   "ai_pain_product_shortlist","ai_marketplace_shortlist_v",
