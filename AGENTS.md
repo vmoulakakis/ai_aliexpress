@@ -18,3 +18,7 @@ Read `skills/agentic-development-lifecycle/SKILL.md` before software, AI/agent, 
 
 ## Universal Creation Orchestrator
 For creation, build, analysis, audit or release read `.agents/skills/universal-creation-orchestrator/SKILL.md` and this project's established specialist contracts. Existing SAP read-only, privacy, security and ADLC limits are authoritative. Do not change unrelated code or assert untested success.
+
+## AI Pipeline Reliability & Recovery — use for operations
+
+For failed or deceptively successful GitHub Actions, AI inference/provider errors, GitHub OIDC, Supabase/Vercel gateways, SearXNG, AliExpress sourcing, ingestion and schedule recovery, **read `skills/ai-pipeline-reliability/SKILL.md` before fixing or claiming success**. Inspect exact run attempts and deployed versions; test the latest commit, not just a historical rerun. Compile-only CI and zero-exit jobs are not proof of successful data collection or AI judgment. This is a specialist under MyAgenticTeam and ADLC, not a second orchestrator.
