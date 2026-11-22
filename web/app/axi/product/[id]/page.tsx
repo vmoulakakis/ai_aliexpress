@@ -6,9 +6,13 @@ import {
   problemName,
   safeAxiUrl,
 } from "../../../../lib/axi";
-import "../../../opportunities/opportunities.css";
+import {
+  FoundHeader,
+  FoundFooter,
+  Icon,
+} from "../../../../components/found/FoundUI";
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Στοιχεία υποψήφιας λύσης | FOUND. AXI" };
+export const metadata = { title: "Μια πιθανή λύση, όλα τα στοιχεία | FOUND." };
 export default async function AxiProductPage({
   params,
 }: {
@@ -21,137 +25,207 @@ export default async function AxiProductPage({
     data = await getAxiData("id=" + encodeURIComponent(id) + "&limit=1");
   } catch {
     return (
-      <main className="omap">
-        <div className="omap-content">
+      <div className="hx-app" lang="el">
+        <FoundHeader active="product" />
+        <main id="found-main" className="hx-unavailable">
+          <Icon name="compass" size={40} />
           <h1>Τα στοιχεία δεν είναι διαθέσιμα.</h1>
-          <p role="status">
-            Η πηγή δεν ανταποκρίνεται. Δοκίμασε ξανά αργότερα.
-          </p>
-          <Link href="/catalog">Επιστροφή στον κατάλογο</Link>
-        </div>
-      </main>
+          <p>Η πηγή δεν ανταποκρίνεται. Δοκίμασε ξανά αργότερα.</p>
+          <Link className="hx-button hx-button-dark" href="/catalog">
+            Πίσω στις λύσεις <Icon name="arrow" />
+          </Link>
+        </main>
+        <FoundFooter />
+      </div>
     );
   }
   const p = data.items[0];
   if (!p) notFound();
   const image = safeAxiUrl(p.image_url, "image"),
     affiliate = safeAxiUrl(p.affiliate_url, "affiliate");
+  const primary = p.problem_keys?.[0];
   return (
-    <main className="omap">
-      <header className="omap-nav">
-        <Link href="/opportunities">
-          FOUND<span>.</span>
-        </Link>
-        <nav>
-          <Link href="/catalog">Κατάλογος</Link>
-          <Link href="/opportunities">Χάρτης αναγκών</Link>
+    <div className="hx-app" lang="el">
+      <FoundHeader active="product" />
+      <main id="found-main" className="hx-container">
+        <nav aria-label="Διαδρομή" className="hx-breadcrumb">
+          <Link href="/catalog">Εξερεύνηση</Link>
+          <Icon name="right" />
+          {primary ? (
+            <>
+              <Link href={"/catalog?problem=" + primary}>
+                {problemName(primary)}
+              </Link>
+              <Icon name="right" />
+            </>
+          ) : null}
+          <span>Στοιχεία καταχώρισης</span>
         </nav>
-      </header>
-      <section className="omap-content">
-        <p className="omap-kicker">AXI / PRODUCT EVIDENCE / {id}</p>
-        <div className="axi-detail">
-          <figure className="axi-photo">
-            {image ? (
-              <img src={image} alt={p.title} />
-            ) : (
-              <span>Δεν υπάρχει διαθέσιμη εικόνα πηγής</span>
-            )}
-            <figcaption className="axi-note">
-              Εικόνα από την καταχώριση του πωλητή. Η ταύτιση με το ακριβές SKU
-              χρειάζεται έλεγχο.
-            </figcaption>
-          </figure>
-          <article>
-            <p className="axi-label">ΥΠΟΨΗΦΙΑ ΛΥΣΗ · ΕΛΕΓΧΟΣ ΣΕ ΕΞΕΛΙΞΗ</p>
-            <h1 className="axi-title">{p.user_job || p.title}</h1>
-            <p>{p.title}</p>
-            <strong className="axi-price">{price(p)}</strong>
-            <p className="axi-note">
-              Τιμή καταχώρισης του detail API σε EUR. Η παραλλαγή, τα
-              μεταφορικά, ο ΦΠΑ και το τελικό κόστος Ελλάδας χρειάζονται
-              επιβεβαίωση στο AliExpress.
+        <section className="hx-detail-hero">
+          <div className="hx-detail-media">
+            <div className="hx-detail-photo">
+              <span>PRODUCT / {id}</span>
+              {image ? (
+                <img
+                  src={image}
+                  alt={p.title}
+                  width={600}
+                  height={600}
+                  fetchPriority="high"
+                />
+              ) : (
+                <Icon name="source" size={55} />
+              )}
+            </div>
+            <p>
+              Εικόνα από την καταχώριση πωλητή. Η ταύτιση με το ακριβές SKU δεν
+              έχει επαληθευτεί.
+            </p>
+          </div>
+          <article className="hx-detail-copy">
+            <span className="hx-detail-tag">
+              <i />
+              ΥΠΟΨΗΦΙΑ ΛΥΣΗ / ΠΡΟΣ ΕΛΕΓΧΟ
+            </span>
+            <h1>{p.user_job || p.title}</h1>
+            <p className="hx-detail-mechanism">
+              {p.mechanism ||
+                "Η λειτουργία και η καταλληλότητα για τη χρήση σου χρειάζονται διερεύνηση."}
+            </p>
+            <div className="hx-detail-pricing">
+              <strong>{price(p)}</strong>
+              <span>
+                Τιμή καταχώρισης
+                <br />
+                Detail API · EUR
+              </span>
+            </div>
+            <p className="hx-detail-cost-note">
+              Η τελική παραλλαγή, τα μεταφορικά, ο ΦΠΑ και το κόστος παράδοσης
+              στην Ελλάδα χρειάζονται επιβεβαίωση στο AliExpress.
             </p>
             {affiliate ? (
               <a
-                className="omap-primary"
+                className="hx-button hx-button-dark"
                 href={affiliate}
                 target="_blank"
                 rel="sponsored nofollow noopener noreferrer"
               >
-                Δες την καταχώριση στο AliExpress ↗
+                Δες την καταχώριση στο AliExpress{" "}
+                <Icon name="diagonal" size={19} />
               </a>
             ) : (
               <p>
-                Δεν υπάρχει σύνδεσμος affiliate από το API για αυτό το προϊόν.
+                Δεν υπάρχει διαθέσιμος σύνδεσμος affiliate από την πηγή για αυτό
+                το προϊόν.
               </p>
             )}
-            <p className="axi-note">
-              Affiliate: ενδέχεται να λάβουμε προμήθεια από αγορά μέσω του
-              συνδέσμου, χωρίς επιπλέον χρέωση από εμάς. Η απόδοση προμήθειας
-              δεν έχει επαληθευτεί.
+            <p className="hx-affiliate-note">
+              Affiliate link: ενδέχεται να λάβουμε προμήθεια από αγορά, χωρίς
+              επιπλέον χρέωση από εμάς. Tracking και απόδοση προμήθειας δεν
+              έχουν επαληθευτεί.
             </p>
+            <div className="hx-detail-context">
+              <Icon name="compass" size={22} />
+              <p>
+                <strong>Πιθανός χρήστης</strong>
+                <br />
+                {p.persona || "Χρειάζεται περισσότερη διερεύνηση."}
+              </p>
+            </div>
+            <div className="hx-detail-tags">
+              {p.problem_keys?.map((k) => (
+                <span key={k}>{problemName(k)}</span>
+              ))}
+            </div>
+            <p className="hx-detail-original">Τίτλος πηγής: {p.title}</p>
           </article>
-        </div>
-        <div className="axi-ledger">
-          <article>
-            <p className="omap-kicker">01 / AI INTERPRETATION</p>
-            <h2>Πώς μπορεί να βοηθήσει</h2>
-            <p>{p.mechanism || "Δεν υπάρχει ακόμη ερμηνεία AI."}</p>
-            <p>Πιθανός χρήστης: {p.persona || "Προς διερεύνηση"}</p>
-            {p.problem_keys?.map((k) => (
-              <span className="axi-tag" key={k}>
-                {problemName(k)}
-              </span>
-            ))}
-            <p className="axi-note">
-              Ερμηνεία {p.model || "σε εκκρεμότητα"} ·{" "}
-              {p.taxonomy_version || "χωρίς ταξινόμηση"} · προς ανθρώπινο
-              έλεγχο. Η εμπιστοσύνη του μοντέλου δεν αποτελεί αξιολόγηση
-              ποιότητας προϊόντος.
+        </section>
+        <section className="hx-detail-evidence">
+          <div>
+            <span className="hx-overline">
+              <i />
+              EVIDENCE BEFORE DECISION
+            </span>
+            <h2>
+              Οι λεπτομέρειες
+              <br />
+              κάνουν τη διαφορά.
+            </h2>
+            <p>
+              Τι υπάρχει στην πηγή, τι ερμηνεύει το AI και τι χρειάζεται ακόμη
+              έλεγχο. Όλα στο ίδιο σημείο.
             </p>
-          </article>
-          <article>
-            <p className="omap-kicker">02 / SOURCE EVIDENCE</p>
-            <h2>Σε τι βασίζεται</h2>
-            {p.evidence_quote ? (
-              <blockquote>{p.evidence_quote}</blockquote>
-            ) : (
-              <p>Δεν υπάρχει δεσμευμένο απόσπασμα.</p>
-            )}
-            <p>Πηγή: AliExpress catalog / detail API</p>
-            <p className="axi-note">
-              Καταγραφή:{" "}
-              {new Intl.DateTimeFormat("el-GR", {
-                dateStyle: "medium",
-                timeStyle: "short",
-                timeZone: "Europe/Athens",
-              }).format(new Date(p.observed_at))}{" "}
-              · τεκμήριο {p.source_document_id ?? "μη συνδεδεμένο"}
-            </p>
-            <a
-              href={p.source_url}
-              target="_blank"
-              rel="nofollow noopener noreferrer"
-            >
-              Αρχική καταχώριση ↗
-            </a>
-          </article>
-          <article>
-            <p className="omap-kicker">03 / STILL UNKNOWN</p>
-            <h2>Πριν αποφασίσεις</h2>
-            <ul>
-              <li>Ακριβές SKU και συμβατότητα με τη χρήση σου</li>
-              <li>Αποθήκη ΕΕ, παράδοση και τελικό κόστος Ελλάδας</li>
-              <li>Αξιοπιστία πωλητή και αυθεντικότητα κριτικών</li>
-              <li>Συμμόρφωση, εγγύηση και επιστροφές</li>
-              <li>Πραγματική σύγκριση με ελληνικό κατάστημα</li>
-            </ul>
-            <p className="axi-note">
-              Δεν έχει αποδειχθεί σπανιότητα, εξοικονόμηση ή εμπορική ευκαιρία.
-            </p>
-          </article>
-        </div>
-      </section>
-    </main>
+          </div>
+          <div className="hx-evidence-panel">
+            <details open>
+              <summary>
+                Σε τι βασίζεται η ερμηνεία <Icon name="plus" size={18} />
+              </summary>
+              <div>
+                {p.evidence_quote ? (
+                  <blockquote>{p.evidence_quote}</blockquote>
+                ) : (
+                  <p>Δεν υπάρχει συνδεδεμένο απόσπασμα πηγής.</p>
+                )}
+                <p>
+                  Πηγή: AliExpress catalog / detail API · Τεκμήριο{" "}
+                  {p.source_document_id ?? "μη συνδεδεμένο"}
+                </p>
+                <p>
+                  Καταγραφή:{" "}
+                  {new Intl.DateTimeFormat("el-GR", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                    timeZone: "Europe/Athens",
+                  }).format(new Date(p.observed_at))}
+                </p>
+                <a
+                  href={p.source_url}
+                  target="_blank"
+                  rel="nofollow noopener noreferrer"
+                >
+                  Αρχική καταχώριση <Icon name="diagonal" size={14} />
+                </a>
+              </div>
+            </details>
+            <details open>
+              <summary>
+                Τι παραμένει προς έλεγχο <Icon name="plus" size={18} />
+              </summary>
+              <div>
+                <ul>
+                  <li>Ακριβές SKU και συμβατότητα με τη χρήση σου</li>
+                  <li>Αποθήκη ΕΕ, παράδοση και τελικό κόστος Ελλάδας</li>
+                  <li>
+                    Πωλητής, αυθεντικότητα κριτικών, συμμόρφωση και εγγύηση
+                  </li>
+                  <li>Πραγματικά συγκρίσιμη εναλλακτική στην ελληνική αγορά</li>
+                </ul>
+                <p>
+                  Δεν έχει αποδειχθεί σπανιότητα, εξοικονόμηση ή εμπορική
+                  ευκαιρία.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                Πώς χρησιμοποιείται το AI <Icon name="plus" size={18} />
+              </summary>
+              <div>
+                <p>
+                  Η σύνδεση ανάγκης–προϊόντος προέρχεται από{" "}
+                  {p.model || "εκκρεμή ταξινόμηση"}, έκδοση{" "}
+                  {p.taxonomy_version || "μη διαθέσιμη"}. Παραμένει προς
+                  ανθρώπινο έλεγχο. Η εμπιστοσύνη του μοντέλου δεν αποτελεί
+                  αξιολόγηση ποιότητας ή σύσταση αγοράς.
+                </p>
+              </div>
+            </details>
+          </div>
+        </section>
+      </main>
+      <FoundFooter />
+    </div>
   );
 }

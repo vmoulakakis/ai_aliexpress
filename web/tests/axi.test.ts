@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { safeAxiUrl, price, type AxiProduct } from "../lib/axi.ts";
+import {
+  safeAxiUrl,
+  price,
+  matchesNeed,
+  type AxiProduct,
+} from "../lib/axi-shared.ts";
 test("affiliate destinations reject deceptive hosts, credentials and scripts", () => {
   for (const url of [
     "javascript:alert(1)",
@@ -26,4 +31,15 @@ test("unknown and invalid prices never become zero-euro offers", () => {
   for (const value of [null, "invalid", 0, -2])
     assert.equal(price({ listed_eur: value } as AxiProduct), "Τιμή άγνωστη");
   assert.match(price({ listed_eur: "91.07" } as AxiProduct), /91,07/);
+});
+
+test("need search supports the suggested everyday Greek words", () => {
+  assert.equal(matchesNeed("equipment-maintenance", "επισκευή"), true);
+  assert.equal(matchesNeed("fluid-handling", "ΥΓΡΑ"), true);
+  assert.equal(matchesNeed("inspect-hidden-damage", "κάμερα"), true);
+  assert.equal(
+    matchesNeed("equipment-maintenance", "ανύπαρκτο-ζητούμενο"),
+    false,
+  );
+  assert.equal(matchesNeed("unknown", ""), false);
 });
