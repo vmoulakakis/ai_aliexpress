@@ -37,7 +37,16 @@ export async function POST(req:NextRequest){
  const messages=safeMessages((body as {messages?:unknown})?.messages);
  if(!messages)return json({error:"invalid_messages"},400);
  const apiKey=process.env.GAP_AGENT_API_KEY;
- if(!apiKey)return json({error:"model_not_configured",message:"Η ζωντανή AI συνομιλία δεν έχει ενεργοποιηθεί ακόμη. Δεν εμφανίζουμε κατασκευασμένες απαντήσεις."},503);
+ if(!apiKey){
+  try{
+   const edge=await fetch("https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-gap-public-consultant",{
+     method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({messages}),signal:AbortSignal.timeout(30000)
+   });
+   const output=await edge.json();
+   if(!edge.ok)return json({error:output.error||"agent_unavailable",message:output.message||"Η υπηρεσία AI δεν είναι διαθέσιμη."},edge.status);
+   return json(output);
+  }catch{return json({error:"edge_agent_unavailable",message:"Ο AI agent δεν είναι διαθέσιμος αυτή τη στιγμή."},503);}
+ }
  const endpoint=process.env.GAP_AGENT_BASE_URL||"https://api.deepseek.com";
  if(!["https://api.deepseek.com","https://api.openai.com"].includes(endpoint))return json({error:"provider_not_supported"},503);
  try{
