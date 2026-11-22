@@ -1,35 +1,48 @@
-name: Direct AliExpress Sourcing
-
+name: Nightly EU AliExpress Product Discovery
 on:
   workflow_dispatch:
     inputs:
       query_limit:
-        description: AI source queries
+        description: Maximum source queries per market
         required: false
-        default: '30'
+        default: '12'
       pages_per_query:
         description: Pages per query
         required: false
-        default: '2'
+        default: '1'
   schedule:
-    - cron: '17 11 * * *'
+    # 01:17 UTC nightly (03:17 Athens winter, 04:17 summer).
+    - cron: '17 1 * * *'
 
 permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: nightly-eu-aliexpress-discovery
+  cancel-in-progress: false
+
 jobs:
   source:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        market: [GR, DE, FR, IE]
     env:
       VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
       ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
-      MARKET_CODE: GR
+      MARKET_CODE: ${{ matrix.market }}
+      ALIEXPRESS_PAGE_SIZE: '25'
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
-      - run: python workers/product_intelligence/direct_aliexpress.py --queries ${{ inputs.query_limit || '30' }} --pages ${{ inputs.pages_per_query || '2' }}
+      - name: Run source-specific product discovery
+        run: python workers/product_intelligence/direct_aliexpress.py --queries ${{ inputs.query_limit || '12' }} --pages ${{ inputs.pages_per_query || '1' }}
