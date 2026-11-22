@@ -46,3 +46,37 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Run source-specific product discovery
         run: python workers/product_intelligence/direct_aliexpress.py --queries ${{ inputs.query_limit || '12' }} --pages ${{ inputs.pages_per_query || '1' }}
+      - name: Start evidence search service
+        shell: bash
+        env:
+          SEARXNG_BASE_URL: http://127.0.0.1:8080
+        run: |
+          SEARXNG_SECRET_KEY="$(openssl rand -hex 32)"
+          cat > "$RUNNER_TEMP/searxng-settings.yml" <<YAML
+          use_default_settings: true
+          server:
+            secret_key: "${SEARXNG_SECRET_KEY}"
+            limiter: false
+          search:
+            formats:
+              - html
+              - json
+          YAML
+          docker run -d --name searxng -p 8080:8080 \
+            -v "$RUNNER_TEMP/searxng-settings.yml:/etc/searxng/settings.yml:ro" \
+            searxng/searxng:2026.9.5-c7f3080aa
+          ready=0
+          for i in {1..30}; do
+            if curl --max-time 3 -fsS 'http://127.0.0.1:8080/search?q=healthcheck&format=json' >/dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo '::error::Research search provider unavailable'
+            docker logs searxng --tail 50 || true
+            exit 1
+          fi
+      - name: Audit European marketplaces and specialty shops
+        env:
+          SEARXNG_BASE_URL: http://127.0.0.1:8080
+        run: python workers/product_intelligence/europe_market_research.py --market ${{ matrix.market }} --limit 12
+
