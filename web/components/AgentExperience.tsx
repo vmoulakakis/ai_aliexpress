@@ -28,9 +28,10 @@ const prompts=[
  {icon:"◇",title:"Ψάχνω εξειδικευμένο εργαλείο",prompt:"Θέλω εξειδικευμένο εργαλείο επισκευής ή τεχνολογίας. Βοήθησέ με να βρω την κατάλληλη κατηγορία."}
 ];
 function isEmerging(p:Product){const t=String((p as Product&{first_seen_at?:string;discovered_at?:string}).first_seen_at||(p as Product&{discovered_at?:string}).discovered_at||"");if(!t)return false;const date=Date.parse(t);return Number.isFinite(date)&&date<=Date.now()&&Date.now()-date<90*86400000;}
-function isPremium(p:Product){const x=p as Product&{commission_verified?:boolean;expected_commission_eur?:number;greek_absence_verified?:boolean;eu_compliance_verified?:boolean;shipping_gr_verified?:boolean};
-return x.commission_verified===true&&Number(x.expected_commission_eur)>10&&x.greek_absence_verified===true&&x.eu_compliance_verified===true&&x.shipping_gr_verified===true&&!!p.promotion_url;}
-export default function AgentExperience({products,initialCountry="GR",initialCity="",initialPrompt="",initialLane="pain",initialLocale="el"}:{products:Product[];initialCountry?:string;initialCity?:string;initialPrompt?:string;initialLane?:string;initialLocale?:string}){
+type Opportunity={source_product_id:string;country_code:string;estimated_commission_eur:number|null;scarcity_status:string;market_checked_at:string|null;estimate_type:"estimated";};
+function hasScarcityProof(o:Opportunity|undefined){return !!o&&["hard_to_find","not_found_in_checked_sources"].includes(o.scarcity_status)&&!!o.market_checked_at;}
+function isPremium(p:Product,o:Opportunity|undefined){return !!p.promotion_url&&hasScarcityProof(o)&&Number(o?.estimated_commission_eur)>10;}
+export default function AgentExperience({products,initialCountry="GR",initialCity="",initialPrompt="",initialLane="pain",initialLocale="el",opportunities=[]}:{products:Product[];initialCountry?:string;initialCity?:string;initialPrompt?:string;initialLane?:string;initialLocale?:string;opportunities?:Opportunity[]}){
  const tr=L10N[initialLocale]||L10N.en;
  const starters=STARTERS[initialLocale]||STARTERS.en;
  const [messages,setMessages]=useState<Message[]>([]);
@@ -42,8 +43,9 @@ export default function AgentExperience({products,initialCountry="GR",initialCit
  const end=useRef<HTMLDivElement>(null);const autoStarted=useRef(false);
  useEffect(()=>{end.current?.scrollIntoView({behavior:"smooth",block:"nearest"});},[messages,busy,picks]);
  const valid=products.filter(p=>p.title&&p.source_product_id);
- const rail=valid.filter(p=>channel==="premium"?isPremium(p):channel==="emerging"?isEmerging(p):!!p.problem_title).slice(0,6);
- const counts={premium:valid.filter(isPremium).length,pain:valid.filter(p=>!!p.problem_title).length,emerging:valid.filter(isEmerging).length};
+ const opportunityMap=new Map(opportunities.filter(x=>x.country_code===initialCountry).map(x=>[x.source_product_id,x]));
+ const rail=valid.filter(p=>channel==="premium"?isPremium(p,opportunityMap.get(p.source_product_id)):channel==="emerging"?isEmerging(p):!!p.problem_title).slice(0,6);
+ const counts={premium:valid.filter(p=>isPremium(p,opportunityMap.get(p.source_product_id))).length,pain:valid.filter(p=>!!p.problem_title).length,emerging:valid.filter(isEmerging).length};
  async function submit(value:string){
    const q=value.trim().slice(0,750);if(!q||busy)return;
    const next=[...messages,{role:"user",content:q} as Message].slice(-6);
@@ -99,7 +101,7 @@ export default function AgentExperience({products,initialCountry="GR",initialCit
     <button onClick={()=>setChannel("pain")} aria-pressed={channel==="pain"}><b>02</b> Pain-Gap Solutions <span>{counts.pain}</span></button>
     <button onClick={()=>setChannel("emerging")} aria-pressed={channel==="emerging"}><b>03</b> Emerging Finds <span>{counts.emerging}</span></button>
    </div>
-   <div className="hx-rail">{rail.length?rail.map((p,i)=><Link key={p.source_product_id} href={"/eu/"+initialCountry.toLowerCase()+"/product/"+encodeURIComponent(p.source_product_id)} className="hx-product"><div className="hx-product-image">{p.image_url?<img src={p.image_url} alt={p.title} loading="lazy"/>:<span>◈</span>}<small>DISCOVERY / {String(i+1).padStart(2,"0")}</small></div><div className="hx-product-copy"><span>{p.problem_category||p.category||"SPECIALTY FIND"}</span><h3>{compactTitle(p.title,80)}</h3><p>{p.problem_title||"Στοιχεία συμβατότητας και διαθεσιμότητας χρειάζονται έλεγχο."}</p><div><b>{money(p.price_eur)}</b><strong>Explore ↗</strong></div></div></Link>):<div className="hx-empty"><span>∅</span><h3>No verified matches. Yet.</h3><p>{channel==="premium"?"No products currently have verified €10+ commission and destination-market scarcity evidence.":channel==="emerging"?"Δεν υπάρχουν τεκμηριωμένες ημερομηνίες πρώτης καταγραφής για τις διαθέσιμες επιλογές.":"Δεν υπάρχουν καταχωρισμένες λύσεις για αυτό το κανάλι."}</p></div>}</div>
+   <div className="hx-rail">{rail.length?rail.map((p,i)=><Link key={p.source_product_id} href={"/eu/"+initialCountry.toLowerCase()+"/product/"+encodeURIComponent(p.source_product_id)} className="hx-product"><div className="hx-product-image">{p.image_url?<img src={p.image_url} alt={p.title} loading="lazy"/>:<span>◈</span>}<small>DISCOVERY / {String(i+1).padStart(2,"0")}</small></div><div className="hx-product-copy"><span>{p.problem_category||p.category||"SPECIALTY FIND"}</span><h3>{compactTitle(p.title,80)}</h3><p>{p.problem_title||"Στοιχεία συμβατότητας και διαθεσιμότητας χρειάζονται έλεγχο."}</p><div><b>{money(p.price_eur)}</b><strong>Explore ↗</strong></div></div></Link>):<div className="hx-empty"><span>∅</span><h3>No verified matches. Yet.</h3><p>{channel==="premium"?"No products have both a calculated commission above €10 and current evidence of being hard to find in this market.":channel==="emerging"?"Δεν υπάρχουν τεκμηριωμένες ημερομηνίες πρώτης καταγραφής για τις διαθέσιμες επιλογές.":"Δεν υπάρχουν καταχωρισμένες λύσεις για αυτό το κανάλι."}</p></div>}</div>
    <Link href={"/discover?country="+initialCountry} className="hx-all">View the discovery archive <span>↗</span></Link>
   </section>
   <section className="hx-proof" id="principles"><div><span className="hx-section-num">03 / THE STANDARD</span><h2>Less hype.<br/><i>More evidence.</i></h2></div><div className="hx-proof-list"><article><span>01</span><div><h3>Understand the problem</h3><p>Ξεκινάμε από την ανάγκη, όχι από μια δημοφιλή φωτογραφία προϊόντος.</p></div></article><article><span>02</span><div><h3>Research the Greek gap</h3><p>{tr.scarcity}</p></div></article><article><span>03</span><div><h3>Show the unknowns</h3><p>Προμήθεια, αποστολή, ποιότητα και ευρωπαϊκή συμμόρφωση παρουσιάζονται ως επαληθευμένα μόνο όταν υπάρχουν τεκμήρια.</p></div></article></div></section>
