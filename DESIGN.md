@@ -23,5 +23,5 @@ Primary element: orbital intelligence visual paired with a functional agent cons
 
 ## Security and shipping
 LLM key server-side only: GAP_AGENT_API_KEY, GAP_AGENT_BASE_URL (DeepSeek/OpenAI allowlist), GAP_AGENT_MODEL. Never NEXT_PUBLIC secrets.
-No production LLM activation without rate limiting, budget and abuse controls. Existing internal Supabase gateways must not be made public.
+A separate bounded Supabase edge agent is used when GAP_AGENT_API_KEY is absent; it reads the already configured DeepSeek secret from Vault on the server, enforces global and per-IP daily quotas in a private PostgreSQL schema, and returns grounded results. It requires a real end-to-end response test before production promotion. Existing internal Supabase gateways remain unchanged.
 Product claims remain source-grounded and conditional. Affiliate ranking is not commission-biased.
