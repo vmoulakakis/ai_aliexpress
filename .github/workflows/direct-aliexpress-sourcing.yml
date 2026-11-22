@@ -44,6 +44,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
+      - name: Validate sourcing and research worker syntax
+        run: python -m py_compile workers/product_intelligence/direct_aliexpress.py workers/product_intelligence/europe_market_research.py
       - name: Run source-specific product discovery
         run: python workers/product_intelligence/direct_aliexpress.py --queries ${{ inputs.query_limit || '12' }} --pages ${{ inputs.pages_per_query || '1' }}
       - name: Start evidence search service
