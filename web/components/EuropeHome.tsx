@@ -13,7 +13,26 @@ const countries=[
  {code:"IT",label:"Italia",flag:"🇮🇹",lang:"it",cities:["Rome","Milan","Turin"]},
  {code:"ES",label:"España",flag:"🇪🇸",lang:"es",cities:["Madrid","Barcelona","Valencia"]},
  {code:"NL",label:"Nederland",flag:"🇳🇱",lang:"en",cities:["Amsterdam","Rotterdam","Utrecht"]},
- {code:"PL",label:"Polska",flag:"🇵🇱",lang:"en",cities:["Warsaw","Krakow","Wroclaw"]}
+ {code:"PL",label:"Polska",flag:"🇵🇱",lang:"en",cities:["Warsaw","Krakow","Wroclaw"]},
+ {code:"AT",label:"Österreich",flag:"🇦🇹",lang:"de",cities:["Vienna","Graz","Salzburg"]},
+ {code:"BE",label:"Belgique / België",flag:"🇧🇪",lang:"fr",cities:["Brussels","Antwerp","Ghent"]},
+ {code:"BG",label:"България",flag:"🇧🇬",lang:"en",cities:["Sofia","Plovdiv","Varna"]},
+ {code:"HR",label:"Hrvatska",flag:"🇭🇷",lang:"en",cities:["Zagreb","Split","Rijeka"]},
+ {code:"CZ",label:"Česko",flag:"🇨🇿",lang:"en",cities:["Prague","Brno","Ostrava"]},
+ {code:"DK",label:"Danmark",flag:"🇩🇰",lang:"en",cities:["Copenhagen","Aarhus","Odense"]},
+ {code:"EE",label:"Eesti",flag:"🇪🇪",lang:"en",cities:["Tallinn","Tartu","Narva"]},
+ {code:"FI",label:"Suomi",flag:"🇫🇮",lang:"en",cities:["Helsinki","Espoo","Tampere"]},
+ {code:"HU",label:"Magyarország",flag:"🇭🇺",lang:"en",cities:["Budapest","Debrecen","Szeged"]},
+ {code:"IE",label:"Ireland",flag:"🇮🇪",lang:"en",cities:["Dublin","Cork","Galway"]},
+ {code:"LV",label:"Latvija",flag:"🇱🇻",lang:"en",cities:["Riga","Daugavpils","Liepaja"]},
+ {code:"LT",label:"Lietuva",flag:"🇱🇹",lang:"en",cities:["Vilnius","Kaunas","Klaipeda"]},
+ {code:"LU",label:"Luxembourg",flag:"🇱🇺",lang:"fr",cities:["Luxembourg","Esch-sur-Alzette"]},
+ {code:"MT",label:"Malta",flag:"🇲🇹",lang:"en",cities:["Valletta","Sliema","Birkirkara"]},
+ {code:"PT",label:"Portugal",flag:"🇵🇹",lang:"en",cities:["Lisbon","Porto","Braga"]},
+ {code:"RO",label:"România",flag:"🇷🇴",lang:"en",cities:["Bucharest","Cluj-Napoca","Timișoara"]},
+ {code:"SK",label:"Slovensko",flag:"🇸🇰",lang:"en",cities:["Bratislava","Košice","Žilina"]},
+ {code:"SI",label:"Slovenija",flag:"🇸🇮",lang:"en",cities:["Ljubljana","Maribor","Celje"]},
+ {code:"SE",label:"Sverige",flag:"🇸🇪",lang:"en",cities:["Stockholm","Gothenburg","Malmö"]}
 ] as const;
 const copy={
  el:{nav:["Η ιδέα","Ανακαλύψεις","Αξιοπιστία"],hero:"Η λύση που ψάχνεις ίσως υπάρχει ήδη.",highlight:"Απλώς δεν την έχεις ανακαλύψει.",sub:"Πες στον AXI τι χρειάζεσαι. Θα εξετάσει λύσεις, θα αναζητήσει στοιχεία για τη χώρα σου και θα ξεχωρίσει όσα γνωρίζουμε από όσα χρειάζονται επιβεβαίωση.",ask:"Τι θα ήθελες να λύσεις σήμερα;",placeholder:"Π.χ. θέλω κάτι για να προστατεύσω τα φυτά μου στο μπαλκόνι...",cta:"Ξεκίνα με τον AXI",location:"Η αγορά σου",city:"Πόλη",lanes:"Τρεις τρόποι να ανακαλύψεις κάτι καλύτερο.",discover:"Ανακάλυψε προϊόντα",proof:"Η εμπιστοσύνη δεν είναι ένα διαφημιστικό badge.",install:"Εγκατάσταση στο κινητό",catalogue:"Επιλεγμένες λύσεις προς διερεύνηση",see:"Δες τη λύση"},
