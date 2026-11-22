@@ -29,7 +29,7 @@ const prompts=[
 ];
 function isEmerging(p:Product){const t=String((p as Product&{first_seen_at?:string;discovered_at?:string}).first_seen_at||(p as Product&{discovered_at?:string}).discovered_at||"");if(!t)return false;const date=Date.parse(t);return Number.isFinite(date)&&date<=Date.now()&&Date.now()-date<90*86400000;}
 type Opportunity={source_product_id:string;country_code:string;estimated_commission_eur:number|null;scarcity_status:string;market_checked_at:string|null;estimate_type:"estimated";};
-function hasScarcityProof(o:Opportunity|undefined){return !!o&&["hard_to_find","not_found_in_checked_sources"].includes(o.scarcity_status)&&!!o.market_checked_at;}
+function hasScarcityProof(o:Opportunity|undefined){return !!o&&["hard_to_find","not_found_in_checked_sources","limited_availability"].includes(o.scarcity_status)&&!!o.market_checked_at;}
 function isPremium(p:Product,o:Opportunity|undefined){return !!p.promotion_url&&hasScarcityProof(o)&&Number(o?.estimated_commission_eur)>10;}
 export default function AgentExperience({products,initialCountry="GR",initialCity="",initialPrompt="",initialLane="pain",initialLocale="el",opportunities=[]}:{products:Product[];initialCountry?:string;initialCity?:string;initialPrompt?:string;initialLane?:string;initialLocale?:string;opportunities?:Opportunity[]}){
  const tr=L10N[initialLocale]||L10N.en;
