@@ -7,7 +7,8 @@ const countries:Record<string,{name:string;language:string;locale:string}>={
  gr:{name:"Greece",language:"Ελληνικά",locale:"el-GR"},cy:{name:"Cyprus",language:"Ελληνικά",locale:"el-CY"},
  de:{name:"Germany",language:"Deutsch",locale:"de-DE"},fr:{name:"France",language:"Français",locale:"fr-FR"},
  it:{name:"Italy",language:"Italiano",locale:"it-IT"},es:{name:"Spain",language:"Español",locale:"es-ES"},
- nl:{name:"Netherlands",language:"English",locale:"en-NL"},pl:{name:"Poland",language:"English",locale:"en-PL"}};
+ nl:{name:"Netherlands",language:"English",locale:"en-NL"},pl:{name:"Poland",language:"English",locale:"en-PL"},
+ at:{name:"Austria",language:"Deutsch",locale:"de-AT"},be:{name:"Belgium",language:"Français / English",locale:"fr-BE"},bg:{name:"Bulgaria",language:"English",locale:"en-BG"},hr:{name:"Croatia",language:"English",locale:"en-HR"},cz:{name:"Czechia",language:"English",locale:"en-CZ"},dk:{name:"Denmark",language:"English",locale:"en-DK"},ee:{name:"Estonia",language:"English",locale:"en-EE"},fi:{name:"Finland",language:"English",locale:"en-FI"},hu:{name:"Hungary",language:"English",locale:"en-HU"},ie:{name:"Ireland",language:"English",locale:"en-IE"},lv:{name:"Latvia",language:"English",locale:"en-LV"},lt:{name:"Lithuania",language:"English",locale:"en-LT"},lu:{name:"Luxembourg",language:"Français",locale:"fr-LU"},mt:{name:"Malta",language:"English",locale:"en-MT"},pt:{name:"Portugal",language:"English",locale:"en-PT"},ro:{name:"Romania",language:"English",locale:"en-RO"},sk:{name:"Slovakia",language:"English",locale:"en-SK"},si:{name:"Slovenia",language:"English",locale:"en-SI"},se:{name:"Sweden",language:"English",locale:"en-SE"}};
 type Params={country:string;id:string};
 export const revalidate=300;
 export async function generateMetadata({params}:{params:Promise<Params>}):Promise<Metadata>{
