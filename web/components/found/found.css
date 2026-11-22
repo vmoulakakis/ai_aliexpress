@@ -910,7 +910,7 @@
   line-height: 1.5;
   margin-bottom: 10px;
 }
-.hx-product-body h3 {
+.hx-product-body :is(h2, h3) {
   font-size: 17px;
   line-height: 1.25;
   letter-spacing: -0.035em;
@@ -1249,7 +1249,7 @@
   padding: 17px;
   min-height: 255px;
 }
-.hx-catalog-results .hx-product-body h3 {
+.hx-catalog-results .hx-product-body :is(h2, h3) {
   font-size: 15px;
 }
 .hx-catalog-results .hx-product-price {
@@ -1841,7 +1841,7 @@
     padding: 17px;
     min-height: 250px;
   }
-  .hx-product-body h3 {
+  .hx-product-body :is(h2, h3) {
     font-size: 15px;
   }
   .hx-product-image img {
@@ -2159,8 +2159,8 @@
     min-height: 225px;
     padding: 21px;
   }
-  .hx-product-body h3,
-  .hx-catalog-results .hx-product-body h3 {
+  .hx-product-body :is(h2, h3),
+  .hx-catalog-results .hx-product-body :is(h2, h3) {
     font-size: 18px;
   }
   .hx-product-body > p {

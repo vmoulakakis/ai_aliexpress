@@ -115,7 +115,12 @@ export default async function Catalog({
               <>
                 <div className="hx-product-grid">
                   {data.items.map((p, i) => (
-                    <ProductCard key={p.id} product={p} index={i} />
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      index={i}
+                      headingLevel={2}
+                    />
                   ))}
                 </div>
                 {data.has_more && data.next_cursor ? (

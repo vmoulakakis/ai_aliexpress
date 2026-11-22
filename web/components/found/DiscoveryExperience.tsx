@@ -161,7 +161,9 @@ export function NeedExplorer({
   const [state, setState] = useState<"ready" | "loading" | "error">("ready");
   const [retry, setRetry] = useState(0);
   const cache = useRef<Seeds>({ ...seeds });
-  const clusters = data?.clusters || [];
+  const clusters = [...(data?.clusters || [])].sort((a, b) =>
+    a.problem_key === initial ? -1 : b.problem_key === initial ? 1 : 0,
+  );
   const current = clusters.find((c) => c.problem_key === selected);
   const visible = clusters.filter((c) => matchesNeed(c.problem_key, query));
   useEffect(() => {
@@ -440,7 +442,7 @@ export default function DiscoveryExperience({
             <i />
             <div>
               <strong>{data?.clusters.length}</strong>
-              <span>ανάγκες με ταξινόμηση AI</span>
+              <span>ομάδες ερμηνείας AI</span>
             </div>
             <i />
             <div>

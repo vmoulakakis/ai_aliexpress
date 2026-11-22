@@ -149,11 +149,14 @@ export function FoundFooter() {
 export function ProductCard({
   product: p,
   index = 0,
+  headingLevel = 3,
 }: {
   product: AxiProduct;
   index?: number;
+  headingLevel?: 2 | 3;
 }) {
   const image = safeAxiUrl(p.image_url, "image");
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   return (
     <article className="hx-product-card">
       <Link
@@ -187,11 +190,11 @@ export function ProductCard({
             ? problemName(p.problem_keys[0])
             : "Υποψήφια λύση"}
         </span>
-        <h3>
+        <Heading>
           <Link href={"/axi/product/" + p.aliexpress_product_id}>
             {p.user_job || p.title}
           </Link>
-        </h3>
+        </Heading>
         <p>
           {p.mechanism ||
             "Δες την αρχική καταχώριση και τα διαθέσιμα στοιχεία."}
