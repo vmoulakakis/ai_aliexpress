@@ -1,35 +1,84 @@
-name: Direct AliExpress Sourcing
-
+name: Nightly EU AliExpress Product Discovery
 on:
   workflow_dispatch:
     inputs:
       query_limit:
-        description: AI source queries
+        description: Maximum source queries per market
         required: false
-        default: '30'
+        default: '12'
       pages_per_query:
         description: Pages per query
         required: false
-        default: '2'
+        default: '1'
   schedule:
-    - cron: '17 11 * * *'
+    # 01:17 UTC nightly (03:17 Athens winter, 04:17 summer).
+    - cron: '17 1 * * *'
 
 permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: nightly-eu-aliexpress-discovery
+  cancel-in-progress: false
+
 jobs:
   source:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        market: [GR, DE, FR, IE]
     env:
       VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
       ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
-      MARKET_CODE: GR
+      MARKET_CODE: ${{ matrix.market }}
+      ALIEXPRESS_PAGE_SIZE: '25'
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install -r requirements.txt
-      - run: python workers/product_intelligence/direct_aliexpress.py --queries ${{ inputs.query_limit || '30' }} --pages ${{ inputs.pages_per_query || '2' }}
+      - name: Validate sourcing and research worker syntax
+        run: python -m py_compile workers/product_intelligence/direct_aliexpress.py workers/product_intelligence/europe_market_research.py
+      - name: Run source-specific product discovery
+        run: python workers/product_intelligence/direct_aliexpress.py --queries ${{ inputs.query_limit || '12' }} --pages ${{ inputs.pages_per_query || '1' }}
+      - name: Start evidence search service
+        shell: bash
+        env:
+          SEARXNG_BASE_URL: http://127.0.0.1:8080
+        run: |
+          SEARXNG_SECRET_KEY="$(openssl rand -hex 32)"
+          cat > "$RUNNER_TEMP/searxng-settings.yml" <<YAML
+          use_default_settings: true
+          server:
+            secret_key: "${SEARXNG_SECRET_KEY}"
+            limiter: false
+          search:
+            formats:
+              - html
+              - json
+          YAML
+          docker run -d --name searxng -p 8080:8080 \
+            -v "$RUNNER_TEMP/searxng-settings.yml:/etc/searxng/settings.yml:ro" \
+            searxng/searxng:2026.9.5-c7f3080aa
+          ready=0
+          for i in {1..30}; do
+            if curl --max-time 3 -fsS 'http://127.0.0.1:8080/search?q=healthcheck&format=json' >/dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo '::error::Research search provider unavailable'
+            docker logs searxng --tail 50 || true
+            exit 1
+          fi
+      - name: Audit European marketplaces and specialty shops
+        env:
+          SEARXNG_BASE_URL: http://127.0.0.1:8080
+        run: python workers/product_intelligence/europe_market_research.py --market ${{ matrix.market }} --limit 12
+

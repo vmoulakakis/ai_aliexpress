@@ -12,7 +12,8 @@ sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call  # noqa:E402
 
 ALIEXPRESS_GATEWAY=os.getenv("ALIEXPRESS_GATEWAY","https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate")
-MARKET=os.getenv("MARKET_CODE","GR")
+MARKET=os.getenv("MARKET_CODE","GR").upper()
+if MARKET not in {"GR","DE","FR","IE"}: raise RuntimeError("unsupported_market")
 MIN_COMMISSION_EUR=Decimal("10")
 PAGE_SIZE=min(50,max(1,int(os.getenv("ALIEXPRESS_PAGE_SIZE","30"))))
 TIMEOUT=int(os.getenv("ALIEXPRESS_TIMEOUT_SECONDS","90"))
@@ -92,7 +93,7 @@ def upsert_offer(product_id:str,p:dict[str,Any])->Decimal|None:
     now=datetime.now(timezone.utc).isoformat()
     db_call("POST","ai_product_offers",
       params={"on_conflict":"product_candidate_id,source_offer_key"},
-      data={"product_candidate_id":product_id,"source_offer_key":f"{p.get('product_id')}:{shop_id}",
+      data={"product_candidate_id":product_id,"source_offer_key":f"{MARKET}:{p.get('product_id')}:{shop_id}",
             "seller_source_id":None if shop_id=="unknown" else shop_id,"seller_url":p.get("shop_url"),
             "price_eur":float(price) if price is not None else None,
             "original_price_eur":float(num(p.get("original_price"))) if num(p.get("original_price")) is not None else None,
@@ -104,7 +105,7 @@ def upsert_offer(product_id:str,p:dict[str,Any])->Decimal|None:
             "shipping_eur":float(num(p.get("shipping_fee"))) if num(p.get("shipping_fee")) is not None else None,
             "fulfillment_evidence":{"ship_from_country":p.get("ship_from_country")},
             "logistics_evidence":{"ship_to_days":p.get("ship_to_days"),"shipping_fee":p.get("shipping_fee")},
-            "raw_payload":p,"last_seen_at":now,"observed_at":now},
+            "raw_payload":{**p,"target_market":MARKET,"estimate_basis":"listed_price_times_listed_rate_unverified"},"last_seen_at":now,"observed_at":now},
       prefer="resolution=merge-duplicates,return=minimal")
     return c
 
@@ -121,11 +122,12 @@ def upsert_discovery(product_id:str,row:dict[str,Any],mode:str,rank:int):
         "product_candidate_id":product_id,
         "source_query_id":row["id"],
         "problem_cluster_id":row.get("problem_cluster_id"),
-        "retrieval_mode":mode,
+        "retrieval_mode":mode+"_"+MARKET.lower(),
         "result_rank":rank,
         "query_text":row.get("query_text"),
         "metadata":{
           "source":"travelai-aliexpress",
+          "target_market":MARKET,
           "query_family":row.get("query_family"),
           "greek_gap_opportunity":(row.get("agent_feedback") or {}).get("greek_gap_opportunity"),
           "greek_gap_confidence":(row.get("agent_feedback") or {}).get("greek_gap_confidence")
@@ -190,6 +192,7 @@ def run_query(row,pages:int):
       "sample_results":sample,
       "result_count":stats["seen"],
       "eligible_count":stats["promotion_eligible"]}
+    if MARKET != "GR": return stats
     db_call("PATCH","ai_source_queries",params={"id":f"eq.{row['id']}"},
             data={"last_run_at":now,"updated_at":now,
                   "last_result_count":stats["seen"],
@@ -207,5 +210,5 @@ def main():
     for q in queries:
         st=run_query(q,max(1,args.pages))
         for k in ("seen","stored","promotion_eligible"):total[k]+=st[k]
-    print(json.dumps({"event":"run_complete",**total}))
+    print(json.dumps({"event":"run_complete","market":MARKET,**total}))
 if __name__=="__main__":main()
