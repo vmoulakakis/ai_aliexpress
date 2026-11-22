@@ -59,7 +59,7 @@ export default function AgentExperience({products,initialCountry="GR",initialCit
      setMessages(prev=>[...prev,{role:"assistant",content:String(j.answer||"")}]);setPicks(j.products||[]);
    }catch(e){
      const fallback=tr.fallback;
-     setMessages(prev=>[...prev,{role:"assistant",content:fallback}]);
+     // Show one retryable outage notice, not a duplicate chat message.
      setError(tr.fallback);
    }
    finally{setBusy(false);}
