@@ -1,12 +1,10 @@
-import DiscoveryChannels from "../../components/DiscoveryChannels";
-import {getMarketplaceData} from "../../lib/products";
+import AgentExperience from "../../components/AgentExperience";
+import {getMarketplaceData,type Product} from "../../lib/products";
 
 export const revalidate=300;
-export const metadata={title:"AI Gap Hunter | Premium · Pain Gaps · Emerging",description:"Discover AI-sourced AliExpress solutions for Greece with transparent product and affiliate verification."};
-
+export const metadata={title:"FOUND. | AI problem-solving discovery",description:"Describe your problem. Explore evidence-backed AliExpress solutions for Greece with a conversational AI consultant."};
 export default async function DiscoverPage(){
-  let data={products:[] as Awaited<ReturnType<typeof getMarketplaceData>>["products"],mode:"UNAVAILABLE"};
-  try {const response=await getMarketplaceData();data={products:response.products,mode:response.mode};}
-  catch { /* fail closed: no invented inventory */ }
-  return <DiscoveryChannels products={data.products} mode={data.mode}/>;
+ let products:Product[]=[];
+ try{const response=await getMarketplaceData();products=response.products;}catch{ /* fail closed */ }
+ return <AgentExperience products={products}/>;
 }
