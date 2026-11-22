@@ -3,10 +3,11 @@ import {getMarketplaceData,type Product} from "../../lib/products";
 export const revalidate=300;
 export const metadata={title:"AXI | Your European discovery agent",description:"Describe what you need and investigate product options with country-aware context and transparent evidence."};
 const supported=new Set(["GR","CY","DE","FR","IT","ES","NL","PL","AT","BE","BG","HR","CZ","DK","EE","FI","HU","IE","LV","LT","LU","MT","PT","RO","SK","SI","SE"]);
-export default async function DiscoverPage({searchParams}:{searchParams:Promise<{country?:string;city?:string;problem?:string;lane?:string}>}){
+export default async function DiscoverPage({searchParams}:{searchParams:Promise<{country?:string;city?:string;problem?:string;lane?:string;lang?:string}>}){
  const q=await searchParams;
  const country=supported.has((q.country||"GR").toUpperCase())?(q.country||"GR").toUpperCase():"GR";
  let products:Product[]=[];
  try{products=(await getMarketplaceData()).products;}catch{/* fail closed */}
- return <AgentExperience products={products} initialCountry={country} initialCity={(q.city||"").slice(0,80)} initialPrompt={(q.problem||"").slice(0,700)} initialLane={q.lane||"pain"}/>;
+ const lang=["el","en","de","fr"].includes(q.lang||"")?(q.lang as string):(["GR","CY"].includes(country)?"el":["DE","AT"].includes(country)?"de":["FR","BE","LU"].includes(country)?"fr":"en");
+ return <AgentExperience products={products} initialLocale={lang} initialCountry={country} initialCity={(q.city||"").slice(0,80)} initialPrompt={(q.problem||"").slice(0,700)} initialLane={q.lane||"pain"}/>;
 }
