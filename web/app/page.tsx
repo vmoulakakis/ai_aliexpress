@@ -9,7 +9,7 @@ export default async function Page(){
     <header className="topNav discoveryNav">
       <a className="logo foundLogo" href="/">FOUND.<small>DISCOVERY COMMERCE</small></a>
       <nav><a href="#demand">Demand Atlas</a><a href="#market">Discover</a><a href="#proof">Why trust it</a></nav>
-      <a className="navButton" href="#market">Discover solutions</a>
+      <a className="navButton" href="/discover">Premium · Pain Gaps · Emerging</a>
     </header>
     <Marketplace products={data.products} categories={data.categories} subcategories={data.subcategories} mode={data.mode}/>
   </>;
