@@ -92,9 +92,20 @@ def main():
             db_call("POST","ai_europe_market_checks",data=record,prefer="return=minimal")
             summary["checks"]+=1
             time.sleep(.18)
-        # Never certify 'hard_to_find' from a search-engine negative alone.
-        # Report this as research_incomplete until individual product matches are reviewed.
-        result="widely_available" if status_counts.get("exact_found",0)>=3 else "research_incomplete"
+        # A scoped "hard_to_find" signal is permitted only after 4+ distinct
+        # provider search-result URLs, 2+ marketplaces and 2+ specialist shops.
+        # This is NOT a claim of absence from Europe; it expires after 7 days.
+        domains={urlparse(u).hostname for u in urls if urlparse(u).hostname}
+        quality=(marketplace_checks>=2 and specialist_checks>=2 and len(domains)>=4
+                 and status_counts.get("research_error",0)==0)
+        if quality and status_counts.get("exact_found",0)>=3:
+            result="widely_available"
+        elif quality and status_counts.get("exact_found",0)==1 and status_counts.get("functional_substitute_found",0)==0:
+            result="limited_availability"
+        elif quality and status_counts.get("exact_found",0)==0 and status_counts.get("functional_substitute_found",0)==0:
+            result="hard_to_find"
+        else:
+            result="research_incomplete"
         assessment={"source_product_id":pid,"country_code":args.market,
             "scarcity_status":result,"evaluated_at":now.isoformat(),
             "expires_at":(now+timedelta(days=7)).isoformat(),
