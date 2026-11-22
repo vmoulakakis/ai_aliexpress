@@ -1,16 +1,10 @@
-import Marketplace from "../components/Marketplace";
-import {getMarketplaceData} from "../lib/products";
+import EuropeHome from "../components/EuropeHome";
+import {getMarketplaceData,type Product} from "../lib/products";
 
 export const revalidate=300;
-
+export const metadata={title:"FOUND. EUROPE — Discover what you haven't found yet",description:"Discover hard-to-find solutions for your country. Tell AXI your problem and explore real product evidence across Europe."};
 export default async function Page(){
-  const data=await getMarketplaceData();
-  return <>
-    <header className="topNav discoveryNav">
-      <a className="logo foundLogo" href="/">FOUND.<small>DISCOVERY COMMERCE</small></a>
-      <nav><a href="#demand">Demand Atlas</a><a href="#market">Discover</a><a href="#proof">Why trust it</a></nav>
-      <a className="navButton" href="/discover">Premium · Pain Gaps · Emerging</a>
-    </header>
-    <Marketplace products={data.products} categories={data.categories} subcategories={data.subcategories} mode={data.mode}/>
-  </>;
+ let products:Product[]=[];
+ try{products=(await getMarketplaceData()).products;}catch{/* show honest empty state */}
+ return <EuropeHome products={products}/>;
 }
