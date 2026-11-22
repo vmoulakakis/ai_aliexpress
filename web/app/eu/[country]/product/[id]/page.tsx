@@ -25,11 +25,15 @@ export default async function EuropeProductPage({params}:{params:Promise<Params>
  const affiliate=p.promotion_url||p.product_url;const hasAffiliate=!!p.promotion_url;
  let scarcity:"hard_to_find"|"limited_availability"|"not_found_in_checked_sources"|"unverified"="unverified";
  let checkedAt:string|null=null;
+ let shippingVerified=false;
+ let complianceVerified=false;
  try {
    const response=await fetch("https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/found-europe-opportunities?country="+country.toUpperCase(),{next:{revalidate:300}});
    if(response.ok){
      const result=await response.json();
      const evidence=Array.isArray(result.offers)?result.offers.find((v:{source_product_id:string})=>v.source_product_id===p.source_product_id):null;
+     shippingVerified=evidence?.shipping_verified===true;
+     complianceVerified=evidence?.eu_compliance_verified===true;
      const status=evidence?.scarcity_status;
      if(evidence?.market_checked_at&&["hard_to_find","limited_availability","not_found_in_checked_sources"].includes(status)){
        scarcity=status;checkedAt=evidence.market_checked_at;
@@ -60,8 +64,8 @@ export default async function EuropeProductPage({params}:{params:Promise<Params>
   </div></section>
   <section className="ep-evidence"><div className="ep-heading"><span>01 / MARKET REALITY</span><h2>Rare in Europe?<em> Verify before claiming.</em></h2><p>This product is a candidate for local market analysis, not an established European exclusive.</p></div><div className="ep-evidence-grid">
    <div><span>MARKET PRESENCE</span><strong>{scarceLabel}</strong><p>{checkedAt?"Market-specific research observed "+new Date(checkedAt).toLocaleDateString("en-GB")+". This is a scoped finding, not proof of absence across the EU.":"No fresh source-backed scarcity conclusion for this country. Product remains a research candidate."}</p></div>
-   <div><span>SHIPPING TO {market.name.toUpperCase()}</span><strong>Not verified</strong><p>{shipping?"Existing supplier fulfillment snapshot: "+String(shipping)+".":"Destination-specific delivery remains unverified."} Check destination, final cost and delivery options.</p></div>
-   <div><span>PRODUCT COMPLIANCE</span><strong>Not verified</strong><p>EU product safety, CE applicability, product-specific obligations and responsible operator have not been verified for this listing.</p></div>
+   <div><span>SHIPPING TO {market.name.toUpperCase()}</span><strong>{shippingVerified?"Verified destination offer":"Not verified"}</strong><p>{shipping?"Existing supplier fulfillment snapshot: "+String(shipping)+".":"Destination-specific delivery remains unverified."} Check destination, final cost and delivery options.</p></div>
+   <div><span>PRODUCT COMPLIANCE</span><strong>{complianceVerified?"Current evidence on file":"Not verified"}</strong><p>EU product safety, CE applicability, product-specific obligations and responsible operator have not been verified for this listing.</p></div>
    <div><span>AFFILIATE DISCLOSURE</span><strong>Commercially independent</strong><p>The site may earn an estimated affiliate commission on eligible orders. Commission estimates do not determine product suitability or guarantee any payout.</p></div>
   </div></section>
   <section className="ep-details"><div className="ep-heading"><span>02 / SOLUTION REPORT</span><h2>What matters.<em> What remains unknown.</em></h2></div><div className="ep-columns"><article><h3>The job to be done</h3><p>{p.problem_title||"Check the specific need and technical use case before buying."}</p><p>{p.target_customer?"Intended audience: "+p.target_customer:"Target users need further verification."}</p><h3>Why investigate it?</h3>{why.length?<ul>{why.map((x,i)=><li key={i}>{x}</li>)}</ul>:<p>Use-case suitability and advantages have not been sufficiently documented.</p>}</article>
