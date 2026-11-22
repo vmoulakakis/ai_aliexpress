@@ -1,58 +1,38 @@
-# AXI / FOUND — WORK CONTINUATION HANDOFF (2026-11-22)
+# AXI / FOUND — WORK CONTINUATION HANDOFF
+Updated 2026-11-22 after implementation of AXI-20261122-TAXONOMY.
 
 ## Exact target
 - Repository: https://github.com/vmoulakakis/ai_aliexpress
-- Active implementation branch: `feat/axi-neural-rag-discovery-20261122` (NOT merged).
-- Existing draft PR: https://github.com/vmoulakakis/ai_aliexpress/pull/12 (verify current head before continuing).
-- Vercel project: `axizei-proof-commerce`, ID `prj_2d5SjTjxtp6H3ISB3h9bdXviKRuQ`; team `team_jt3jd1HJUB4sK1oZdl9MUYGs`.
-- Supabase VMDB project: `gqpbskssrvpfjtujwezc`; private isolated schema `axi`; DO NOT access or mix SocialMarket data.
-- Canonical agent control-plane: `vmoulakakis/Myagenticteam`. Read live governance before edits; use `AGENTS.md`, ADLC and ECC gates.
+- Branch: feat/axi-neural-rag-discovery-20261122; draft PR https://github.com/vmoulakakis/ai_aliexpress/pull/12 . Never confuse with main or aliexpress_ai.
+- Tested functional revision: 28b3067c260d57b96cde1802b86ba0bccfd842b8. Follow-up includes copy correction and this evidence checkpoint; inspect current HEAD.
+- Vercel project axizei-proof-commerce / prj_2d5SjTjxtp6H3ISB3h9bdXviKRuQ, team_jt3jd1HJUB4sK1oZdl9MUYGs.
+- Verified preview dpl_5WsXEo4P3LyXWv6oMGb3qGwXDWdq: https://axizei-proof-commerce-3cpu9gajs-vassilis-projects-3bf8541b.vercel.app/opportunities . No production promotion/main merge.
+- Supabase VMDB gqpbskssrvpfjtujwezc; private axi schema. No SocialMarket reads or mixed dataset.
 
-## Implemented in this conversation
-1. `web/app/catalog/page.tsx`: catalog of real marketplace API products with explicit affiliate disclosure, price uncertainty and safe affiliate domain handling. Commit `ec968232b66a3bdea9aabbda6557e59a3ea34bf7`.
-2. `web/app/opportunities/page.tsx` and `opportunities.css`: evidence-first infographic of problem clusters, counts, listed-price coverage and affiliate URL shape coverage, each cluster linked to AXI problem-led discovery. Uses existing `getMarketplaceData()` endpoint, no fake AI results.
-3. Previous preview deployment `dpl_J7cA9ZDHfSSkp7y2j67s6sHdfhzD` reached READY on commit `ec968232...`; the new infographic commits are NOT in that deployment until a new deployment is created.
-4. No production deployment or merge authorized by this handoff alone.
+## Completed / verified
+1. Read-only axi-catalog edge v1 with platform JWT check; bounded service-role-only public.axi_catalog_read RPC. No raw payload/review/Vault projection. Global DB request cap240/minute, strict params, max60/cursor pages. Preview branch has public anon credential in server env AXI_CATALOG_ANON_KEY; never put privileged keys in browser.
+2. 1038 genuine unique source products, all now classified by real DeepSeek calls into axi.problem_taxonomy v1 (problem keys + job + mechanism + persona + confidence + bound source document). All PENDING_REVIEW; labels never certify demand/product quality. 12 problem groups, multi-label up to3. Admin-only classifier, disjoint row-locked batches, daily55-attempt cap. This day's cap is exhausted; do not retry further today. Two early invalid batches rolled back, corrected source quoting and summary length handling; all1038 eventually persisted.
+3. Fixed display currency source: historical axi.offers.price marked EUR differed >2x from detail EUR in806 offer rows. Preserve raw data. Projection only trusts explicit detail_price_currency=EUR + detail_target_sale_price. 1015 priced products, 737 >=EUR50. Catalog browsing defaults to >=EUR50; these are listing prices, never delivered Greece totals.
+4. /opportunities uses AXI aggregates and real AI semantic classification. /catalog supports problem + after cursor. /axi/product/[id] shows correct AXI identity, image, price, job/mechanism/persona, source, timestamp, unknowns and affiliate disclosure. No false ratings, savings or scarcity claims.
+5. 413 products with API-generated affiliate links using share1000 (394 baseline +19). Three live redirect probes got403; tracking/identity/commission remain unverified. No purchases.
+6. Local build/typecheck, 3 Node tests and 8 Python/live tests pass. New edge checks in CI; web PR quality gate runs npm ci/test/build with lockfile. GitHub CI45064215631 and web gate45064215638 succeeded on28b3067. Desktop/mobile browser rendering and map→filtered catalog checked; AXI detail observed, affiliate rels inspected. See .adlc/AXI-20261122-TAXONOMY/production-signal.md.
 
-## Data state last verified (NOT current live counts)
-- `axi.products`: 1,038 distinct genuine AliExpress product IDs.
-- `axi.offers`: 1,063, of which 896 have listed price >= EUR 50, not Greece-delivered price.
-- `axi.embeddings`: 0; `axi.decisions` VERIFIED: 0.
-- Raw AliExpress API `evaluate_rate` exists on 291 offer rows / 281 products; reported sales on 1,038 products. No actual review texts in `axi.review_evidence`.
-- Earlier affiliate generation checkpoint: 394 of 1,038 had API-issued links, not full redirect/commission verification. Recount from live DB; do not repeat old counts as current.
-- AliExpress anti-bot challenge blocked direct HTML review scraping. Never fabricate reviews or bypass access controls.
-- SDK HMAC-SHA256 signing, key in Vault; never print or commit API secret.
+## Current data and cost limits
+- 1038 classifications, 0 VERIFIED commerce decisions, 0 embeddings.
+- 55 model attempts; successful-call recorded tokens115849 prompt +127841 completion, excludes failed-call usage. No invoice/total-cost claim.
+- Review provider last checkpoint:5 private snapshots, no publication. User quota100/day, scheduler target<=90; two pre-ledger calls existed. No review API calls in this continuation. Do not expose the shared key; rotate via secure management when possible.
+- Existing private AXI base tables/functions were created before these new tracked migrations. Additive migrations assume that existing schema; this is not a complete new-project DB bootstrap.
 
-## Product requirements
-- Genuine unique AliExpress products >= EUR 50; ideal 80–100,000 EUR.
-- Greece price gap >= 50% must be proven against exact comparable SKU and all-in delivered cost, never inferred from listed price.
-- Verified affiliate links with redirect, product identity, tracking ID `share1000` and commission eligibility; affiliate issuance alone is not sufficient.
-- AI agent should solve customer problems, not merely browse generic categories.
-- Infographic must show problem → solution → evidence → economics → decision, with actual provenance, freshness, missingness and confidence. Avoid pretending deterministic grouping is AI.
-- User wants premium visual design, mobile UX, dynamic category intelligence, 360 product profile, reviews, price history, 3 real alternatives per family, RAG/GraphRAG with embeddings and verification.
-- Free-first. No invented ratings, demand, savings, price history or compliance.
+## Next work, in order
+1. Review this preview/PR. Main merge and production promotion require actual review; handoff alone does not authorize them.
+2. Connect /discover and /api/agent to AXI. They currently use the PREVIOUS marketplace data path. Do not claim the entire agent flow is now AXI grounded. Keep bounded inference/quotas, source IDs, no fabricated answers; add evaluations.
+3. Populate multilingual embeddings/hybrid retrieval in isolated axi, then independent Greek demand and SKU-matched local comparable evidence. Current graph edges mean discovery-query relation, not demand proof.
+4. Verify exact SKU, destination GR warehouse/shipping/final taxes, seller quality, compliance, returns and authentic reviews. API titles are seller assertions, not certifications. Source prices need TTL/rechecks and cross-field currency reconciliation, not destructive replacement.
+5. Complete remaining affiliate issuance with bounded retries and failed-ID ledger; do not loop over permanently unavailable IDs. Audit redirect/product identity/tracking separately; API issuance is not commission verification.
+6. Build actual spec-aware equivalent-family matching/top3; current earlier product_families are provisional title-prefix groups and must not imply equivalence.
+7. Create permitted review normalizer/quota-safe scheduler only after provider terms/reset details and secret handling are checked. No invented review text or historical price chart.
 
-## Critical engineering next steps for Work
-1. Inspect HEAD, branch/PR, repo governance, CI, existing AXI backend, Vercel preview, and live Supabase `axi` schema. Reconcile existing `marketplace-products` endpoint: it may represent a different marketplace dataset, not the private `axi` dataset. Current infographic therefore shows **API-visible sample only**, not all 1,038 AXI rows.
-2. Build a safe read-only API projection of `axi` (service role server-side only; strict validation, pagination, rate limits). No client Vault exposure. Replace the infographic's marketplace sample with the intended AXI dataset once verified.
-3. Build **genuine AI taxonomy**: model-based multi-label problem / user job / mechanism / target persona classification, confidence, taxonomy version, evidence provenance, human-review queue; deterministic fallback clearly labeled. Persist classifications to `axi` with idempotent migration and RLS.
-4. Reconcile affiliate links and run a bounded URL/redirect audit; avoid claiming commission validation without evidence.
-5. Add test fixtures, accessibility tests, responsive browser QA, build, security and error-state checks. Verify data labels.
-6. Open/update draft PR; deploy preview and inspect; production merge/deploy only after explicit review gates.
+## Governance / rollback
+Read AGENTS.md, DESIGN.md, .agents/skills/universal-creation-orchestrator/SKILL.md and relevant local ADLC/reliability contracts. Keep source in this repo/branch. No secrets in commits. Rollback UI by reverting feature revision; revoke service RPC/deactivate new edge if needed. Private additive taxonomy can remain as audit evidence. No main/production deployment was performed.
 
-## UI routes
-- `/catalog` — live product catalog.
-- `/opportunities` — infographic / problem clusters.
-- `/discover` — existing AXI agent experience.
-- `/eu/gr/product/[id]` — existing product detail (currently driven by marketplace API).
-
-## Precise status
-- GitHub code saved: YES on feature branch.
-- Latest infographic build / browser tests: NOT RUN in this chat.
-- Infographic preview deployment: NOT YET DEPLOYED.
-- Production release: NOT DONE.
-- Data/API integration with private `axi` schema: NOT DONE.
-- Actual model-generated category classification: NOT DONE.
-
-## Work handoff prompt
-Continue `vmoulakakis/ai_aliexpress` on branch `feat/axi-neural-rag-discovery-20261122` using MyAgenticTeam + vassilis-ecc-core. Read `docs/AXI_WORK_HANDOFF_20261122.md`, `AGENTS.md` and relevant skills. Inspect current code/DB/deployments. First run build/tests and deploy a preview of `/opportunities`; then replace field grouping with real versioned AI semantic problem taxonomy backed by isolated Supabase `axi`, preserving evidence provenance and avoiding fake verification. Reconcile affiliate links, test end-to-end, maintain draft PR, report actual evidence and blockers. Do not merge to production without review.
+Visual QA note: media and catalog title for sample1005013174195632 appear inconsistent (handheld meter image versus proximity sensor title). Do not treat real source image as SKU identity verification. Detail UI explicitly labels seller-image/SKU identity unverified; this candidate requires manual review.

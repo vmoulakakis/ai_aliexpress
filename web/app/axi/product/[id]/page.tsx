@@ -50,13 +50,17 @@ export default async function AxiProductPage({
       <section className="omap-content">
         <p className="omap-kicker">AXI / PRODUCT EVIDENCE / {id}</p>
         <div className="axi-detail">
-          <div className="axi-photo">
+          <figure className="axi-photo">
             {image ? (
               <img src={image} alt={p.title} />
             ) : (
               <span>Δεν υπάρχει διαθέσιμη εικόνα πηγής</span>
             )}
-          </div>
+            <figcaption className="axi-note">
+              Εικόνα από την καταχώριση του πωλητή. Η ταύτιση με το ακριβές SKU
+              χρειάζεται έλεγχο.
+            </figcaption>
+          </figure>
           <article>
             <p className="axi-label">ΥΠΟΨΗΦΙΑ ΛΥΣΗ · ΕΛΕΓΧΟΣ ΣΕ ΕΞΕΛΙΞΗ</p>
             <h1 className="axi-title">{p.user_job || p.title}</h1>

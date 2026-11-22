@@ -466,3 +466,11 @@
     gap: 20px;
   }
 }
+
+figure.axi-photo {
+  margin: 0;
+  align-content: start;
+}
+.axi-photo figcaption {
+  padding: 0 20px 20px;
+}
