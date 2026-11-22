@@ -24,7 +24,7 @@ function relevant(products:Product[],question:string){
  .filter(x=>{if(seen.has(x.p.source_product_id))return false;seen.add(x.p.source_product_id);return true;}).slice(0,35);
 }
 export async function GET(){
- return json({service:"gap-hunter-agent",mode:process.env.GAP_AGENT_API_KEY?"configured":"not_configured",tools:["catalog_search","product_evidence"],status:"ready_for_configuration"});
+ return json({service:"gap-hunter-agent",mode:process.env.GAP_AGENT_API_KEY?"direct_llm":"bounded_supabase_edge",tools:["catalog_search","product_evidence"],status:"ready_for_configuration"});
 }
 export async function POST(req:NextRequest){
  const ct=req.headers.get("content-type")||"";
