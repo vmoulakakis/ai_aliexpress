@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {notFound} from "next/navigation";
 import type {Metadata} from "next";
-import {getProduct,money} from "../../../../lib/products";
+import {getProduct,money} from "../../../../../lib/products";
 import "./EuropeProduct.css";
 const countries:Record<string,{name:string;language:string;locale:string}>={
  gr:{name:"Greece",language:"Ελληνικά",locale:"el-GR"},cy:{name:"Cyprus",language:"Ελληνικά",locale:"el-CY"},
