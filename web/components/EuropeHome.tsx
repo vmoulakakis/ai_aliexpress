@@ -50,33 +50,34 @@ const inspirations=[
 ];
 export default function EuropeHome({products}:{products:Product[]}){
  const [country,setCountry]=useState("GR");const [city,setCity]=useState("Athens");const [problem,setProblem]=useState("");
+ const [locale,setLocale]=useState<"el"|"en"|"de"|"fr">("el");
  const [deferred,setDeferred]=useState<any>(null);const [ios,setIos]=useState(false);const [installed,setInstalled]=useState(false);
- const selected=countries.find(x=>x.code===country)||countries[0];const c=copy[selected.lang]||copy.en;
+ const selected=countries.find(x=>x.code===country)||countries[0];const c=copy[locale];
  useEffect(()=>{
   const stored=sessionStorage.getItem("found-market");
-  if(stored&&countries.some(x=>x.code===stored)){setCountry(stored);setCity(countries.find(x=>x.code===stored)!.cities[0]);}
+  if(stored&&countries.some(x=>x.code===stored)){setCountry(stored);setCity(countries.find(x=>x.code===stored)!.cities[0]);const l=countries.find(x=>x.code===stored)!.lang;setLocale(l==="el"||l==="de"||l==="fr"?l:"en");}
   const handler=(event:Event)=>{event.preventDefault();setDeferred(event);};
   const onInstalled=()=>{setInstalled(true);setDeferred(null);};
   window.addEventListener("beforeinstallprompt",handler);window.addEventListener("appinstalled",onInstalled);
   setIos(/iPhone|iPad|iPod/i.test(navigator.userAgent));
   return()=>{window.removeEventListener("beforeinstallprompt",handler);window.removeEventListener("appinstalled",onInstalled)};
  },[]);
- function changeCountry(next:string){const record=countries.find(x=>x.code===next);if(!record)return;setCountry(next);setCity(record.cities[0]);sessionStorage.setItem("found-market",next)}
- function go(q:string){const params=new URLSearchParams({country,city,problem:q});window.location.assign("/discover?"+params.toString());}
+ function changeCountry(next:string){const record=countries.find(x=>x.code===next);if(!record)return;setCountry(next);setCity(record.cities[0]);const l=record.lang;setLocale(l==="el"||l==="de"||l==="fr"?l:"en");sessionStorage.setItem("found-market",next)}
+ function go(q:string){const params=new URLSearchParams({country,city,lang:locale,problem:q});window.location.assign("/discover?"+params.toString());}
  function send(e:FormEvent){e.preventDefault();if(problem.trim())go(problem.trim());}
  async function install(){if(!deferred)return;const event=deferred;setDeferred(null);await event.prompt();await event.userChoice;}
  const showcase=products.filter(x=>x.source_product_id&&x.title).slice(0,6);
  return <main className="fe"><div className="fe-glow" aria-hidden="true"/>
   <header className="fe-nav">
    <Link href="/" className="fe-logo">F<span>O</span>UND<span className="fe-dot">.</span></Link>
-   <nav aria-label="Main"><a href="#how">{c.nav[0]}</a><a href="#worlds">{c.nav[1]}</a><a href="#trust">{c.nav[2]}</a></nav>
-   <Link className="fe-nav-cta" href="/discover">AXI <span aria-hidden>↗</span></Link>
+   <nav aria-label="Main"><a href="#how">{c.nav[0]}</a><a href="#worlds">{c.nav[1]}</a><a href="#trust">{c.nav[2]}</a></nav><label className="fe-language">🌐 <span className="fe-sr">Language</span><select aria-label="Language" value={locale} onChange={e=>setLocale(e.target.value as "el"|"en"|"de"|"fr")}><option value="el">Ελληνικά</option><option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option></select></label>
+   <Link className="fe-nav-cta" href={"/discover?country="+country+"&lang="+locale}>AXI <span aria-hidden>↗</span></Link>
   </header>
   <section className="fe-hero" id="top"><div className="fe-hero-copy">
    <p className="fe-eyebrow"><span className="fe-signal"/> EUROPEAN AI DISCOVERY · PERSONALIZED FOR YOUR MARKET</p>
    <h1>{c.hero}<em>{c.highlight}</em></h1>
    <p className="fe-lead">{c.sub}</p>
-   <div className="fe-chips">{inspirations.map((item,i)=><button key={i} onClick={()=>{setProblem(selected.lang==="el"?item.el:item.en);go(selected.lang==="el"?item.el:item.en);}}> <span>{item.icon}</span>{selected.lang==="el"?item.el:item.en}</button>)}</div>
+   <div className="fe-chips">{inspirations.map((item,i)=><button key={i} onClick={()=>{setProblem(locale==="el"?item.el:item.en);go(selected.lang==="el"?item.el:item.en);}}> <span>{item.icon}</span>{selected.lang==="el"?item.el:item.en}</button>)}</div>
   </div>
   <aside className="fe-hero-art" aria-hidden="true">
    <div className="fe-visual-halo"/><div className="fe-visual-ring ring-1"/><div className="fe-visual-ring ring-2"/><div className="fe-visual-core"><span>AXI</span><strong>✳</strong></div>
@@ -91,9 +92,9 @@ export default function EuropeHome({products}:{products:Product[]}){
   <div className="fe-ticker" aria-hidden="true"><span>DISCOVER WHAT'S MISSING</span><b>✳</b><span>UNDERSTAND THE PAIN</span><b>✳</b><span>VERIFY THE FACTS</span><b>✳</b><span>FIND BETTER</span></div>
   <section className="fe-section" id="how"><div className="fe-section-heading"><p>01 — DISCOVERY SYSTEM</p><h2>{c.lanes}</h2></div>
    <div className="fe-worlds" id="worlds">
-    <Link href="/discover?lane=premium" className="fe-world premium"><span>01 / RESEARCH-GATED</span><strong>Premium<br/><em>Exclusive.</em></strong><p>High-value opportunities. Only verified claims earn a premium label.</p><b>Explore ↗</b></Link>
-    <Link href="/discover?lane=pain" className="fe-world pain"><span>02 / PROBLEM FIRST</span><strong>Pain-Gap<br/><em>Solutions.</em></strong><p>Unexpected ways to solve problems, matched to real needs.</p><b>Explore ↗</b></Link>
-    <Link href="/discover?lane=emerging" className="fe-world emerging"><span>03 / WHAT'S NEXT</span><strong>Emerging<br/><em>Discoveries.</em></strong><p>Recently observed products and new ideas, clearly marked as research candidates.</p><b>Explore ↗</b></Link>
+    <Link href={"/discover?country="+country+"&lang="+locale+"&lane=premium"} className="fe-world premium"><span>01 / RESEARCH-GATED</span><strong>Premium<br/><em>Exclusive.</em></strong><p>High-value opportunities. Only verified claims earn a premium label.</p><b>Explore ↗</b></Link>
+    <Link href={"/discover?country="+country+"&lang="+locale+"&lane=pain"} className="fe-world pain"><span>02 / PROBLEM FIRST</span><strong>Pain-Gap<br/><em>Solutions.</em></strong><p>Unexpected ways to solve problems, matched to real needs.</p><b>Explore ↗</b></Link>
+    <Link href={"/discover?country="+country+"&lang="+locale+"&lane=emerging"} className="fe-world emerging"><span>03 / WHAT'S NEXT</span><strong>Emerging<br/><em>Discoveries.</em></strong><p>Recently observed products and new ideas, clearly marked as research candidates.</p><b>Explore ↗</b></Link>
    </div>
   </section>
   <section className="fe-section fe-selection"><div className="fe-section-heading"><p>02 — PRODUCT STORIES</p><h2>{c.catalogue}</h2><span>Real catalogue listings · market absence not yet verified across Europe</span></div>
