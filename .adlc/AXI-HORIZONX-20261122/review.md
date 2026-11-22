@@ -1,0 +1,6 @@
+# AXI-HORIZONX-20261122
+Standard UI change. Review pending. Preserve data/auth/tracking and >=EUR50; seller images and classifications never imply verification. Rollback: revert UI branch to7710590. No database changes. New read proxy is bounded to one fixed existing edge with validated parameters, no user-supplied URLs or paid inference.
+
+Independent static QA found three P2 issues: small disclosure contrast, unmatched empty-search suggestions, and possible gallery focus loss when the focused card is unmounted. Fixed by semantic muted contrast, explicit Greek search aliases with a regression test, and focus on the stable gallery region before arrow-driven selection. Four Node tests/typecheck pass after fixes. Actual browser check remains pending.
+
+Focused independent follow-up confirmed all3 P2 issues resolved, four Node tests and typecheck passed; no P1/P2 remaining in that review. Root observed actual browser flows and responsive matrix. Subsequent small polish: default need is first in the mobile selector and catalog card headings useh2 while home cards useh3. Remaining limitations (native200% zoom, actual reduced-motion emulation, real-device swipe, field performance) are documented, not claimed passed. User visual approval/production promotion remains outstanding.

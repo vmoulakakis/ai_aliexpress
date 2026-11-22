@@ -1,3 +1,10 @@
+# Current frontend continuation — Horizon X redesign (2026-11-22)
+User rejected the earlier visual design and requested Horizon X, MyAgenticTeam and UI/UX Pro Max. Active frontend branch is now `feat/axi-horizonx-redesign-20261122`, draft PR https://github.com/vmoulakakis/ai_aliexpress/pull/13, stacked on the still-unmerged data foundation PR12. Functional tested revision5dc8422; inspect current HEAD for small follow-up/evidence updates. Verified preview: https://axizei-proof-commerce-mu2dilzbz-vassilis-projects-3bf8541b.vercel.app .
+
+New shared original spatial product gallery, compact navigation, interactive need explorer, catalog and AXI detail UI. Home reads AXI; existing legacy /discover backend is still unchanged. Safe same-origin /api/axi/catalog read proxy validates query parameters and uses existing server-side public read credential. No paid HorizonX source downloaded, no new runtime dependency, inference call or DB change. Current DESIGN.md and local web-design contract supersede previous cream/serif art direction. Evidence: docs/design/HORIZONX_REFERENCE.md, HORIZONX_QA_20261122.md and .adlc/AXI-HORIZONX-20261122/. Continue frontend here; preserve the data/security/commission limits below. No main merge or production promotion.
+
+---
+
 # AXI / FOUND — WORK CONTINUATION HANDOFF
 Updated 2026-11-22 after implementation of AXI-20261122-TAXONOMY.
 

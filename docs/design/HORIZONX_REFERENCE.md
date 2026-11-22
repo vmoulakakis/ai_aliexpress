@@ -1,0 +1,7 @@
+# Reference and provenance
+- Requested: Horizon X, MyAgenticTeam, UI/UX Pro Max. Reference disambiguated to https://horizonx.so (premium UI/code library), not the unrelated Framer portfolio named HorizonX. Public homepage observed in browser.
+- Adapt mechanisms: real image exploration, perspective expressing selected item, controlled hierarchy, compact navigation. Original geometry, copy, brand, layout and code. No HorizonX package, paid export, logo, art or template downloaded or purchased.
+- Selected plugins loaded: myagenticteam1.1.0 and ui-ux-pro-max-chatgpt1.0.0. Upstream Pro Max CLI not found; compatible design/review workflow applied, no claim of installed upstream dataset.
+- Live Myagenticteam AGENTS/DEV_GOVERNANCE/REGISTRY and plugin REPO_CONTRACT1.1.0 accessible; package release matches contract (repo_sync_status: COMPATIBLE_SNAPSHOT; no auto-sync). Canonical web-design/ui-craft/ADLC/UI toolchain/studio read.
+- Assets: product media URLs from existing isolated AXI API, seller-provided, no generated product imagery. Display permission/provenance unchanged; SKU identity remains unverified. Icons authored inline SVG. Fonts: system UI, no downloaded font files. Dependencies: existing React/Next/TypeScript only.
+- Application default main revision inspected: e65fbd6572691e4fe9cbc5325a5da5c03a6ec0ce. Redesign source_revision/base:771059010014f20610761a52b0977d64e78189b9; implementation remains feature-branch-only.
