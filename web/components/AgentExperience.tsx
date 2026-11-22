@@ -55,7 +55,7 @@ export default function AgentExperience({products}:{products:Product[]}){
       <div className="hx-hero-foot"><span>REAL PAINS</span><span>REAL PRODUCT DATA</span><span>NO INVENTED PROOF</span></div>
      </div>
      <section className="hx-console" aria-label="AI problem solving consultant">
-      <div className="hx-console-top"><div><span className="hx-pulse"/> <strong>GAP / INTELLIGENCE</strong><small>Personal discovery agent</small></div><span className="hx-status">BETA · LIVE MODEL REQUIRES CONFIG</span></div>
+      <div className="hx-console-top"><div><span className="hx-pulse"/> <strong>GAP / INTELLIGENCE</strong><small>Personal discovery agent</small></div><span className="hx-status">AI CONSULTANT · BETA</span></div>
       <div className="hx-chat" role="log" aria-live="polite" aria-label="Conversation">
         {showWelcome?<div className="hx-start">
           <div className="hx-ai-symbol">✳</div><p className="hx-step">YOUR PROBLEM IS THE PROMPT</p>
