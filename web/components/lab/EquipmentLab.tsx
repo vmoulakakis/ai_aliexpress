@@ -60,6 +60,7 @@ export default function EquipmentLab() {
   const [query, setQuery] = useState('');
   const [matchError, setMatchError] = useState('');
   const [formError, setFormError] = useState('');
+  const [invalidField, setInvalidField] = useState<'goal' | 'budget' | 'reserve' | null>(null);
   const [hasPlan, setHasPlan] = useState(false);
   const [compare, setCompare] = useState(false);
   const [saved, setSaved] = useState<SavedPlan | null>(null);
@@ -86,7 +87,7 @@ export default function EquipmentLab() {
 
   function selectMission(id: MissionId, scroll = true) {
     setInput(prev => ({ ...prev, mission: id, allowances: undefined })); setGoal(getMission(id).goal);
-    setHasPlan(false); setFormError(''); setMatchError('');
+    setHasPlan(false); setFormError(''); setInvalidField(null); setMatchError('');
     if (scroll) document.getElementById('lab-builder')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function findStartingPoint(event: FormEvent) {
@@ -97,9 +98,9 @@ export default function EquipmentLab() {
   }
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!goal.trim() || goal.length > 750) { setFormError('Περιέγραψε τον στόχο σου με 1 έως 750 χαρακτήρες.'); document.getElementById('lab-goal')?.focus(); return; }
-    try { createPlan(input); } catch (error) { setFormError((error as Error).message); document.getElementById(Number.isFinite(input.contingency) && input.contingency >= 0 && input.contingency <= 50 ? 'lab-budget' : 'lab-reserve')?.focus(); return; }
-    setFormError(''); setHasPlan(true);
+    if (!goal.trim() || goal.length > 750) { setFormError('Περιέγραψε τον στόχο σου με 1 έως 750 χαρακτήρες.'); setInvalidField('goal'); document.getElementById('lab-goal')?.focus(); return; }
+    try { createPlan(input); } catch (error) { setFormError((error as Error).message); const field = Number.isFinite(input.budget) && input.budget >= 100 && input.budget <= 100000 ? 'reserve' : 'budget'; setInvalidField(field); document.getElementById('lab-' + field)?.focus(); return; }
+    setFormError(''); setInvalidField(null); setHasPlan(true);
     const params = new URLSearchParams({ mission: input.mission, tier: input.tier, plan: '1' });
     window.history.replaceState(null, '', `${window.location.pathname}?${params}#lab-result`);
     window.requestAnimationFrame(() => { resultRef.current?.focus({ preventScroll: true }); document.getElementById('lab-result')?.scrollIntoView({ behavior: 'smooth' }); });
@@ -127,7 +128,7 @@ export default function EquipmentLab() {
     try { await navigator.clipboard.writeText(url.toString()); setNotice('Αντιγράφηκε σύνδεσμος της αφετηρίας. Δεν περιλαμβάνει προσωπικό στόχο ή προϋπολογισμό.'); }
     catch { setNotice('Δεν επιτρέπεται η αντιγραφή. Χρησιμοποίησε το CSV για μεταφορά ολόκληρου του πλάνου.'); }
   }
-  function update(patch: Partial<PlanInput>) { setInput(prev => ({ ...prev, ...patch })); setFormError(''); }
+  function update(patch: Partial<PlanInput>) { setInput(prev => ({ ...prev, ...patch })); setFormError(''); setInvalidField(null); }
 
   return <main className={s.lab} lang="el">
     <a className={s.skip} href="#lab-builder">Μετάβαση στον σχεδιαστή</a>
@@ -160,9 +161,9 @@ export default function EquipmentLab() {
         <form noValidate onSubmit={findStartingPoint} className={s.matchForm}><label htmlFor="lab-query">Δεν ξέρεις από πού να ξεκινήσεις;</label><div><textarea className="resize-none" id="lab-query" ref={queryRef} rows={2} maxLength={750} value={query} onChange={e => { setQuery(e.target.value); setMatchError(''); }} placeholder="π.χ. Θέλω έναν ρομποτικό βραχίονα για εκπαίδευση" aria-invalid={!!matchError} aria-describedby={matchError ? 'lab-match-error' : 'lab-match-hint'} style={{ resize: 'none' }}/>{query && <button className={s.clear} type="button" aria-label="Καθαρισμός αναζήτησης" onClick={() => { setQuery(''); setMatchError(''); queryRef.current?.focus(); }}>×</button>}</div><button className={s.textButton} type="submit">Βρες αφετηρία <Arrow/></button><small id="lab-match-hint">Αντιστοίχιση λέξεων στα 3 σενάρια · το κείμενο μένει στη συσκευή σου</small>{matchError && <p id="lab-match-error" role="alert" className={s.error}>{matchError}</p>}</form>
         <form noValidate onSubmit={submit}>
           <fieldset className={s.fieldset}><legend>Εφαρμογή</legend><div className={s.segmented}>{missions.map(m => <label key={m.id} className={input.mission === m.id ? s.selected : ''}><input type="radio" name="mission" value={m.id} checked={input.mission === m.id} onChange={() => selectMission(m.id, false)}/><span>{m.label}</span></label>)}</div></fieldset>
-          <div className={s.field}><label htmlFor="lab-goal">Τι θέλεις να πετύχεις;</label><textarea className="resize-none" id="lab-goal" rows={3} maxLength={750} value={goal} onChange={e => { setGoal(e.target.value); setFormError(''); }} aria-describedby="lab-goal-hint" style={{ resize: 'none' }}/><small id="lab-goal-hint">Ο στόχος συνοδεύει το πλάνο σου. Δεν αλλάζει αυτόματα την επιλεγμένη διαμόρφωση.</small></div>
+          <div className={s.field}><label htmlFor="lab-goal">Τι θέλεις να πετύχεις;</label><textarea className="resize-none" id="lab-goal" rows={3} maxLength={750} value={goal} onChange={e => { setGoal(e.target.value); setFormError(''); setInvalidField(null); }} aria-invalid={invalidField === 'goal'} aria-describedby={invalidField === 'goal' ? 'lab-goal-hint lab-form-error' : 'lab-goal-hint'} style={{ resize: 'none' }}/><small id="lab-goal-hint">Ο στόχος συνοδεύει το πλάνο σου. Δεν αλλάζει αυτόματα την επιλεγμένη διαμόρφωση.</small></div>
           <fieldset className={s.fieldset}><legend>Επίπεδο εξοπλισμού</legend><div className={s.segmented}>{([{ id: 'starter', label: 'Πρώτο πείραμα' }, { id: 'advanced', label: 'Περισσότερη υπολογιστική ισχύς' }] as const).map(t => <label key={t.id} className={input.tier === t.id ? s.selected : ''}><input type="radio" name="tier" checked={input.tier === t.id} onChange={() => update({ tier: t.id, allowances: undefined })}/><span>{t.label}</span></label>)}</div></fieldset>
-          <div className={s.inputGrid}><div className={s.field}><label htmlFor="lab-budget">Συνολικός προϋπολογισμός (€)</label><input id="lab-budget" type="number" min="100" max="100000" step="100" ref={budgetRef} value={Number.isNaN(input.budget) ? '' : input.budget} onChange={e => update({ budget: e.target.value === '' ? NaN : Number(e.target.value) })} aria-invalid={!!formError} aria-describedby={formError ? 'lab-form-error' : 'lab-budget-hint'}/><small id="lab-budget-hint">Πρόβλεψη δαπάνης, μαζί με τυχόν φόρους και μεταφορικά.</small></div><div className={s.field}><label htmlFor="lab-reserve">Αποθεματικό (%)</label><input id="lab-reserve" type="number" min="0" max="50" value={Number.isNaN(input.contingency) ? '' : input.contingency} onChange={e => update({ contingency: e.target.value === '' ? NaN : Number(e.target.value) })}/><small>Για πρόσθετα εξαρτήματα ή αλλαγές του σεναρίου.</small></div></div>
+          <div className={s.inputGrid}><div className={s.field}><label htmlFor="lab-budget">Συνολικός προϋπολογισμός (€)</label><input id="lab-budget" type="number" min="100" max="100000" step="100" ref={budgetRef} value={Number.isNaN(input.budget) ? '' : input.budget} onChange={e => update({ budget: e.target.value === '' ? NaN : Number(e.target.value) })} aria-invalid={invalidField === 'budget'} aria-describedby={invalidField === 'budget' ? 'lab-budget-hint lab-form-error' : 'lab-budget-hint'}/><small id="lab-budget-hint">Πρόβλεψη δαπάνης, μαζί με τυχόν φόρους και μεταφορικά.</small></div><div className={s.field}><label htmlFor="lab-reserve">Αποθεματικό (%)</label><input id="lab-reserve" aria-invalid={invalidField === 'reserve'} aria-describedby={invalidField === 'reserve' ? 'lab-form-error' : undefined} type="number" min="0" max="50" value={Number.isNaN(input.contingency) ? '' : input.contingency} onChange={e => update({ contingency: e.target.value === '' ? NaN : Number(e.target.value) })}/><small>Για πρόσθετα εξαρτήματα ή αλλαγές του σεναρίου.</small></div></div>
           {input.mission === 'robotics' && <label className={s.checkbox}><input type="checkbox" checked={input.existingTraining} onChange={e => update({ existingTraining: e.target.checked })}/><span>Έχω ήδη υπολογιστή εκπαίδευσης<small>Αφαιρεί το σχετικό κονδύλι. Η καταλληλότητά του χρειάζεται έλεγχο.</small></span></label>}
           {formError && <p id="lab-form-error" className={s.error} role="alert">{formError}</p>}
           <button className={s.darkButton} type="submit">Δημιουργία πλάνου <Arrow/></button>
