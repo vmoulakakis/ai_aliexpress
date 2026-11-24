@@ -9,6 +9,7 @@ import requests
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call,_oidc_token
+from llm_gateway import Gateway, GatewayError
 
 ALIEXPRESS_GATEWAY=os.getenv("ALIEXPRESS_GATEWAY","https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate")
 AI_RESEARCH_GATEWAY=os.getenv("AI_RESEARCH_GATEWAY","https://travel-ai-lovat-psi.vercel.app/api/internal/ai-aliexpress-research")
@@ -156,16 +157,21 @@ pain_queries[], comparison_queries[], faq_questions[], title_options[], meta_des
 schema_hints, internal_link_topics[], content_brief, confidence_0_100.
 Greek should be the primary language; English technical product entities may be preserved."""
 
-def synthesize(row:dict[str,Any],cand:dict[str,Any],detail:dict[str,Any],ds,probs,gap,reviews,page_probe):
+def synthesize(row:dict[str,Any],cand:dict[str,Any],detail:dict[str,Any],ds,probs,gap,reviews,page_probe,*,gateway=None):
     payload={"eligible_offer":row,"candidate":cand,"official_detail":detail,
              "discoveries":ds,"problems":probs,"greek_gap_assessment":gap,
              "reviews":reviews,"page_probe":page_probe}
-    intel=ai_json(INTEL_SYSTEM,payload)
-    seo=ai_json(SEO_SYSTEM,{"product_intelligence":intel,**payload})
+    if gateway is None:
+      intel=ai_json(INTEL_SYSTEM,payload)
+      seo=ai_json(SEO_SYSTEM,{"product_intelligence":intel,**payload})
+      model=MODEL
+    else:
+      intel,model=gateway.complete("enrich",INTEL_SYSTEM,payload)
+      seo,_=gateway.complete("seo",SEO_SYSTEM,{"product_intelligence":intel,**payload})
     problem_id=probs[0]["id"] if probs else None
     db_call("POST","ai_product_intelligence",data={
       "product_candidate_id":row["product_candidate_id"],"offer_id":row.get("offer_id"),
-      "problem_cluster_id":problem_id,"model_name":MODEL,"intelligence_version":"product-intel-v1",
+      "problem_cluster_id":problem_id,"model_name":model,"intelligence_version":"product-intel-v1",
       "product_identity":intel.get("product_identity") or {},
       "pain_feature_map":intel.get("pain_feature_map") or [],
       "winning_factors":intel.get("winning_factors") or [],
@@ -206,7 +212,9 @@ def synthesize(row:dict[str,Any],cand:dict[str,Any],detail:dict[str,Any],ds,prob
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("--limit",type=int,default=200);ap.add_argument("--skip-ai",action="store_true");ap.add_argument("--selected-only",action="store_true");ap.add_argument("--missing-details-only",action="store_true")
+    ap.add_argument("--llm-gateway",action="store_true")
     args=ap.parse_args()
+    gateway=Gateway() if args.llm_gateway and not args.skip_ai else None
     rows=eligible(args.limit,args.selected_only)
     stats={"eligible":len(rows),"details":0,"page_accessible":0,"page_blocked":0,"intel":0,"errors":0}
     for row in rows:
@@ -231,11 +239,15 @@ def main():
                   "source":"product_intelligence_worker","confidence":1.0,
                   "evidence_text":"Official affiliate detail does not expose review text; public PDP returned challenge or no stable review corpus."},
             prefer="resolution=merge-duplicates,return=minimal")
-        if not args.skip_ai and TOKEN:
-          synthesize(row,cand,detail,ds,probs,gap,reviews,probe);stats["intel"]+=1
+        if not args.skip_ai and (gateway is not None or TOKEN):
+          synthesize(row,cand,detail,ds,probs,gap,reviews,probe,gateway=gateway);stats["intel"]+=1
         time.sleep(.15)
+      except GatewayError:
+        raise
       except Exception as exc:
         stats["errors"]+=1
         print(json.dumps({"event":"product_intelligence_error","product_candidate_id":row.get("product_candidate_id"),"error":str(exc)[:500]}))
     print(json.dumps({"event":"product_intelligence_complete",**stats}))
+    if gateway is not None and stats["errors"]:
+      raise RuntimeError("Product enrichment could not complete all candidates")
 if __name__=="__main__":main()

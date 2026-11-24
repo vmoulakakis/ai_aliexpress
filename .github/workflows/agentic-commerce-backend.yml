@@ -18,8 +18,19 @@ jobs:
       VMDB_WORKER_GATEWAY: https://gqpbskssrvpfjtujwezc.supabase.co/functions/v1/ai-aliexpress-worker-gateway
       ALIEXPRESS_GATEWAY: https://bgvgstpoypqbjnemqcqp.supabase.co/functions/v1/aliexpress-affiliate
       SEARXNG_BASE_URL: http://127.0.0.1:8080
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      GITHUB_TOKEN: ${{ github.token }}
+      LLM_PROVIDER: ${{ vars.LLM_PROVIDER }}
+      LLM_FALLBACK_PROVIDER: ${{ vars.LLM_FALLBACK_PROVIDER }}
+      LLM_MAX_INPUT_TOKENS: ${{ vars.LLM_MAX_INPUT_TOKENS }}
+      LLM_TOTAL_TOKEN_BUDGET: ${{ vars.LLM_TOTAL_TOKEN_BUDGET }}
+      LLM_RETRIES: ${{ vars.LLM_RETRIES }}
+      LLM_CACHE_SIZE: ${{ vars.LLM_CACHE_SIZE }}
+      DEMAND_AGENT_MODEL: ${{ vars.DEMAND_AGENT_MODEL }}
+      DEMAND_ASSESSMENT_MODEL: ${{ vars.DEMAND_ASSESSMENT_MODEL }}
+      PRODUCT_SEARCH_MODEL: ${{ vars.PRODUCT_SEARCH_MODEL }}
+      HYPOTHESIS_MODEL: ${{ vars.HYPOTHESIS_MODEL }}
+      OPPORTUNITY_JUDGE_MODEL: ${{ vars.OPPORTUNITY_JUDGE_MODEL }}
+      PRODUCT_INTEL_MODEL: ${{ vars.PRODUCT_INTEL_MODEL }}
+      PRODUCT_SEO_MODEL: ${{ vars.PRODUCT_SEO_MODEL }}
       MARKET_CODE: GR
       DEMAND_TOPIC_LIMIT: 100
       DEMAND_RESULTS_PER_QUERY: 6
@@ -28,15 +39,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Validate active AI provider
-        shell: bash
-        run: |
-          if [ -z "${OPENAI_API_KEY:-}" ]; then
-            echo '::error title=AI inference not configured::GitHub Models retired on 2026-07-30. Add OPENAI_API_KEY to repository Actions secrets; do not use GITHUB_TOKEN for model inference.'
-            exit 1
-          fi
-          echo 'AI inference configured through OPENAI_API_KEY (secret value not printed).'
       - run: pip install -r requirements.txt
+      - name: Validate configured AI credentials offline
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          python workers/shared/llm_gateway.py --check
+          echo "LLM_BUDGET_FILE=$RUNNER_TEMP/commerce-llm-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.sqlite" >> "$GITHUB_ENV"
       - name: Start SearXNG
         run: |
           # SearXNG rejects the built-in default secret and exits on startup.
@@ -66,14 +76,25 @@ jobs:
             exit 1
           fi
       - name: Harvest Greek demand evidence
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: python workers/demand_intelligence/harvest.py
       - name: Build hypotheses and forecasts
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: python workers/agentic_backend/judge.py
       - name: Source AliExpress candidates
         run: python workers/product_intelligence/direct_aliexpress.py --queries 30 --pages 2
       - name: Enrich eligible product intelligence
         env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           PUBLIC_PAGE_PROBE_ENABLED: "false"
-        run: python workers/product_intelligence/enrich_eligible.py --limit 200
+        run: python workers/product_intelligence/enrich_eligible.py --limit 200 --llm-gateway
       - name: Judge new candidates
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: python workers/agentic_backend/judge.py
