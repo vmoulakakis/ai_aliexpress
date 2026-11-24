@@ -10,11 +10,9 @@ import requests
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call
+from llm_gateway import Gateway
 
 SEARX=os.getenv("SEARXNG_BASE_URL","http://127.0.0.1:8080").rstrip("/")
-MODEL_ENDPOINT="https://api.openai.com/v1/chat/completions"
-MODEL=os.getenv("DEMAND_AGENT_MODEL","openai/gpt-4.1-mini")
-TOKEN=os.getenv("OPENAI_API_KEY","").strip()
 TOPIC_LIMIT=int(os.getenv("DEMAND_TOPIC_LIMIT","20"))
 RESULTS_PER_QUERY=int(os.getenv("DEMAND_RESULTS_PER_QUERY","6"))
 
@@ -48,24 +46,6 @@ SOURCE_PLANS=[
    '"{topic}" Ελλάδα site:youtube.com',
  ]),
 ]
-
-def ai_json(system:str,payload:Any)->dict[str,Any]:
-    if not TOKEN:
-        raise RuntimeError("OPENAI_API_KEY missing: GitHub Models API retired on 2026-07-30")
-    r=requests.post(MODEL_ENDPOINT,headers={"Authorization":f"Bearer {TOKEN}","Content-Type":"application/json"},
-      json={"model":MODEL.removeprefix("openai/"),"temperature":0.1,"response_format":{"type":"json_object"},
-            "messages":[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}]},timeout=90)
-    r.raise_for_status()
-    if "json" not in r.headers.get("content-type","").lower():
-        raise RuntimeError(f"AI inference response not JSON: HTTP {r.status_code}, content_type={r.headers.get('content-type','unknown')}, body={r.text[:200]!r}")
-    try:
-        content=r.json()["choices"][0]["message"]["content"]
-        result=json.loads(content)
-    except (ValueError,KeyError,IndexError,TypeError) as e:
-        raise RuntimeError(f"AI inference returned malformed JSON completion: {e}") from e
-    if not isinstance(result,dict):
-        raise RuntimeError("AI inference JSON completion was not an object")
-    return result
 
 def search(q:str):
     r=requests.get(f"{SEARX}/search",params={"q":q,"format":"json","language":"el-GR"},timeout=45)
@@ -149,7 +129,7 @@ Return strict JSON:
  "next_actions":["specific evidence to collect next"]
 }"""
 
-def collect_topic(topic:dict[str,Any])->list[dict[str,Any]]:
+def collect_topic(gateway:Gateway,topic:dict[str,Any])->list[dict[str,Any]]:
     now=datetime.now(timezone.utc).isoformat()
     title=normalized_topic(topic)
     pain=str(topic.get("problem_description") or title)
@@ -168,8 +148,8 @@ def collect_topic(topic:dict[str,Any])->list[dict[str,Any]]:
                 seen.add(url)
                 raw={"title":str(result.get("title") or ""),"content":str(result.get("content") or ""),
                      "url":url,"engine":result.get("engine"),"publishedDate":result.get("publishedDate")}
-                try:cls=ai_json(CLASSIFIER,{"problem":topic,"source_name":source_name,"source_family":family,"query":q,"result":raw})
-                except Exception as e:cls={"evidence_kind":"noise","summary":"","noise_risk":str(e)[:250]}
+                cls,_=gateway.complete("classify",CLASSIFIER,{"problem":topic,"source_name":source_name,
+                    "source_family":family,"query":q,"result":raw})
                 facts=cls.get("facts") or {}
                 doc={
                   "market_code":"GR","problem_cluster_id":topic["id"],"source_family":family,"source_name":source_name,
@@ -199,7 +179,7 @@ def collect_topic(topic:dict[str,Any])->list[dict[str,Any]]:
                 docs.append(doc)
     return docs
 
-def assess(topic:dict[str,Any],docs:list[dict[str,Any]]):
+def assess(gateway:Gateway,topic:dict[str,Any],docs:list[dict[str,Any]]):
     compact=[]
     for d in docs[:80]:
       compact.append({
@@ -210,7 +190,7 @@ def assess(topic:dict[str,Any],docs:list[dict[str,Any]]):
         "substitute":d["substitute_evidence"],"competition":d["competition_evidence"],
         "price":d["price_evidence"],"availability":d["availability_evidence"]
       })
-    result=ai_json(ASSESSOR,{"problem":topic,"evidence_documents":compact})
+    result,_=gateway.complete("assess",ASSESSOR,{"problem":topic,"evidence_documents":compact})
     ids=[d.get("id") for d in docs if d.get("id")]
     db_call("POST","ai_greek_gap_assessments",data={
       "problem_cluster_id":topic["id"],"market_code":"GR",
@@ -227,21 +207,21 @@ def assess(topic:dict[str,Any],docs:list[dict[str,Any]]):
     return result
 
 def main():
-    if not TOKEN:
-        raise SystemExit("OPENAI_API_KEY is required for demand intelligence; GitHub Models is retired.")
-    total_docs=0;assessments=0
+    gateway=Gateway()
+    total_docs=0;assessments=0;errors=0
     for topic in topics():
-      docs=collect_topic(topic)
+      docs=collect_topic(gateway,topic)
       total_docs+=len(docs)
       if docs:
         try:
-          out=assess(topic,docs); assessments+=1
+          out=assess(gateway,topic,docs); assessments+=1
           print(json.dumps({"event":"gap_assessed","problem":topic.get("problem_key"),
                             "documents":len(docs),"opportunity":out.get("conversion_opportunity"),
                             "confidence":out.get("confidence_0_100")},ensure_ascii=False))
         except Exception as e:
+          errors+=1
           print(json.dumps({"event":"assessment_error","problem":topic.get("problem_key"),"error":str(e)[:300]}))
-    print(json.dumps({"event":"pain_gap_harvest_complete","documents":total_docs,"assessments":assessments}))
-    if total_docs > 0 and assessments == 0:
-        raise RuntimeError("Demand harvest found evidence but generated zero AI assessments; check assessment_error logs")
+    print(json.dumps({"event":"pain_gap_harvest_complete","documents":total_docs,"assessments":assessments,"errors":errors}))
+    if errors:
+        raise RuntimeError("Demand harvest could not complete all AI assessments; check assessment_error logs")
 if __name__=="__main__":main()

@@ -2,45 +2,21 @@
 from __future__ import annotations
 import json,os,sys
 from pathlib import Path
-from typing import Any
-import requests
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"workers"/"shared"))
 from db_gateway import db_call  # noqa:E402
+from llm_gateway import Gateway
 
-TOKEN=os.getenv("OPENAI_API_KEY","").strip()
-ENDPOINT="https://api.openai.com/v1/chat/completions"
-FAST_MODEL=os.getenv("HYPOTHESIS_MODEL","openai/gpt-4.1-mini")
-SEARCH_MODEL=os.getenv("PRODUCT_SEARCH_MODEL","openai/gpt-4.1")
-JUDGE_MODEL=os.getenv("OPPORTUNITY_JUDGE_MODEL","openai/gpt-4.1")
 TOPICS=int(os.getenv("AGENTIC_TOPIC_LIMIT","20"))
 PRODUCTS=int(os.getenv("AGENTIC_PRODUCT_LIMIT","60"))
-
-def ask(model:str,system:str,payload:Any):
-    if not TOKEN:
-        raise RuntimeError("OPENAI_API_KEY missing: GitHub Models API retired on 2026-07-30")
-    r=requests.post(ENDPOINT,headers={"Authorization":f"Bearer {TOKEN}","Content-Type":"application/json"},
-      json={"model":model.removeprefix("openai/"),"temperature":0.12,"response_format":{"type":"json_object"},
-            "messages":[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}]},timeout=120)
-    r.raise_for_status()
-    if "json" not in r.headers.get("content-type","").lower():
-        raise RuntimeError(f"AI inference response not JSON: HTTP {r.status_code}, content_type={r.headers.get('content-type','unknown')}, body={r.text[:200]!r}")
-    try:
-        content=r.json()["choices"][0]["message"]["content"]
-        result=json.loads(content)
-    except (ValueError,KeyError,IndexError,TypeError) as e:
-        raise RuntimeError(f"AI inference returned malformed JSON completion: {e}") from e
-    if not isinstance(result,dict):
-        raise RuntimeError("AI inference JSON completion was not an object")
-    return result
 
 def load_topics():
     return list(db_call("GET","market_problem_clusters",params={
       "select":"id,problem_key,problem_title,problem_description,target_customer,category,subcategory",
       "market_code":"eq.GR","order":"updated_at.desc","limit":str(TOPICS)}) or [])
 
-def build_queries(topic):
+def build_queries(gateway,topic):
     history=list(db_call("GET","ai_source_queries",params={
       "select":"query_text,query_family,last_result_count,last_eligible_count,consecutive_zero_runs,last_error,agent_feedback,hypothesis",
       "problem_cluster_id":f"eq.{topic['id']}","order":"last_run_at.desc.nullslast,priority.desc","limit":"60"}) or [])
@@ -62,7 +38,7 @@ def build_queries(topic):
         "previous_hypothesis":row.get("hypothesis") or {}
       })
 
-    out=ask(SEARCH_MODEL,"""You are the Senior Marketplace Retrieval Agent for AliExpress.
+    out,model=gateway.complete("queries","""You are the Senior Marketplace Retrieval Agent for AliExpress.
 You are not a filter and you are not a copywriter. You are a search-retrieval specialist.
 
 GOAL:
@@ -133,30 +109,30 @@ Return strict JSON:
               "agent_feedback":{
                 "generation":"professional_adaptive_search_v2",
                 "used_marketplace_feedback":bool(marketplace_feedback),
-                "planner_diagnosis":diagnosis
+                "planner_diagnosis":diagnosis,"model_name":model
               }},
         prefer="resolution=merge-duplicates,return=minimal")
 
-def forecast(topic):
+def forecast(gateway,topic):
     signals=list(db_call("GET","ai_demand_signals",params={
       "select":"id,source_family,source_name,signal_type,observed_value,evidence_url,evidence_text,observed_at,ai_relevance,ai_purchase_intent,ai_confidence,metadata",
       "problem_cluster_id":f"eq.{topic['id']}","order":"observed_at.desc","limit":"120"}) or [])
     if not signals:return
-    out=ask(JUDGE_MODEL,"""You are the Greek demand Forecast Agent. Use only supplied evidence.
+    out,model=gateway.complete("forecast","""You are the Greek demand Forecast Agent. Use only supplied evidence.
 Estimate directional demand for 30, 60 and 90 days. Never invent search volume, sales or market size.
 Return JSON {horizon_30:{direction,score_0_100,reason},horizon_60:{direction,score_0_100,reason},
 horizon_90:{direction,score_0_100,reason},expected_peak:{window,reason},drivers:[...],risks:[...],
 confidence_0_100}. Scores are AI directional indices, not measured demand.""",{"topic":topic,"signals":signals})
     db_call("POST","ai_demand_forecasts",data={
       "market_code":"GR","topic_key":str(topic.get("problem_key") or topic["id"]),
-      "problem_cluster_id":topic["id"],"model_name":JUDGE_MODEL,
+      "problem_cluster_id":topic["id"],"model_name":model,
       "horizon_30":out.get("horizon_30") or {},"horizon_60":out.get("horizon_60") or {},
       "horizon_90":out.get("horizon_90") or {},"expected_peak":out.get("expected_peak") or {},
       "drivers":out.get("drivers") or [],"risks":out.get("risks") or [],
       "confidence":float(out.get("confidence_0_100") or 0)/100,
       "evidence_ids":[x["id"] for x in signals if x.get("id")],"raw_output":out},prefer="return=minimal")
 
-def judge_products():
+def judge_products(gateway):
     rows=list(db_call("GET","ai_promotion_candidates_v",params={
       "select":"*","order":"observed_at.desc","limit":str(PRODUCTS)}) or [])
     for p in rows:
@@ -192,7 +168,7 @@ def judge_products():
           "select":"lifecycle,demand_state,pain_state,supply_state,competition_state,exact_match_state,substitute_state,price_gap_state,buyer_intent_state,conversion_opportunity,confidence,evidence_count,thesis,counter_thesis,next_actions,assessed_at",
           "problem_cluster_id":f"eq.{primary_problem_id}","order":"assessed_at.desc","limit":"3"}) or [])
 
-      out=ask(JUDGE_MODEL,"""You are the final Commercial Judge for a Greek commerce opportunity.
+      out,model=gateway.complete("judge","""You are the final Commercial Judge for a Greek commerce opportunity.
 The only deterministic gate has already been applied: expected commission >= EUR 10.
 
 Judge PRODUCT-PROBLEM FIT first. A high-commission product is not an opportunity if it poorly solves the Greek problem.
@@ -238,7 +214,7 @@ Return JSON {
       db_call("POST","ai_product_evaluations",data={
         "product_candidate_id":p["product_candidate_id"],"offer_id":p["offer_id"],
         "problem_cluster_id":primary_problem_id,
-        "evaluator_role":"final_judge","model_name":JUDGE_MODEL,"verdict":out.get("verdict"),
+        "evaluator_role":"final_judge","model_name":model,"verdict":out.get("verdict"),
         "confidence":float(out.get("confidence_0_100") or 0)/100,
         "opportunity_thesis":out.get("opportunity_thesis"),"risk_thesis":out.get("risk_thesis"),
         "demand_analysis":{**(out.get("demand_analysis") or {}),"product_problem_fit_0_100":out.get("product_problem_fit_0_100")},
@@ -252,14 +228,20 @@ Return JSON {
         prefer="return=minimal")
 
 def main():
-    if not TOKEN:
-        raise SystemExit("OPENAI_API_KEY is required for AI judgment; GitHub Models is retired.")
+    gateway=Gateway()
+    errors=0
     topics=load_topics()
     for t in topics:
-      try:build_queries(t)
-      except Exception as e:print(json.dumps({"event":"product_hunter_error","topic":t["id"],"error":str(e)[:300]}))
-      try:forecast(t)
-      except Exception as e:print(json.dumps({"event":"forecast_error","topic":t["id"],"error":str(e)[:300]}))
-    judge_products()
-    print(json.dumps({"event":"agentic_cycle_complete","topics":len(topics)}))
+      try:build_queries(gateway,t)
+      except Exception as e:
+        errors+=1
+        print(json.dumps({"event":"product_hunter_error","topic":t["id"],"error":str(e)[:300]}))
+      try:forecast(gateway,t)
+      except Exception as e:
+        errors+=1
+        print(json.dumps({"event":"forecast_error","topic":t["id"],"error":str(e)[:300]}))
+    judge_products(gateway)
+    print(json.dumps({"event":"agentic_cycle_complete","topics":len(topics),"errors":errors}))
+    if errors:
+      raise RuntimeError("Agentic cycle could not complete all AI tasks")
 if __name__=="__main__":main()
