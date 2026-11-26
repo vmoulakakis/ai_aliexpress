@@ -44,8 +44,8 @@ export default function AgentExperience({products,initialCountry="GR",initialCit
  useEffect(()=>{end.current?.scrollIntoView({behavior:"smooth",block:"nearest"});},[messages,busy,picks]);
  const valid=products.filter(p=>p.title&&p.source_product_id);
  const opportunityMap=new Map(opportunities.filter(x=>x.country_code===initialCountry).map(x=>[x.source_product_id,x]));
- const rail=valid.filter(p=>channel==="premium"?isPremium(p,opportunityMap.get(p.source_product_id)):channel==="emerging"?isEmerging(p):!!p.problem_title).slice(0,6);
- const counts={premium:valid.filter(p=>isPremium(p,opportunityMap.get(p.source_product_id))).length,pain:valid.filter(p=>!!p.problem_title).length,emerging:valid.filter(isEmerging).length};
+ const rail=valid.filter(p=>channel==="premium"?isPremium(p,opportunityMap.get(p.source_product_id)):channel==="emerging"?isEmerging(p):true).slice(0,6);
+ const counts={premium:valid.filter(p=>isPremium(p,opportunityMap.get(p.source_product_id))).length,pain:valid.length,emerging:valid.filter(isEmerging).length};
  async function submit(value:string){
    const q=value.trim().slice(0,750);if(!q||busy)return;
    const next=[...messages,{role:"user",content:q} as Message].slice(-6);
@@ -59,7 +59,7 @@ export default function AgentExperience({products,initialCountry="GR",initialCit
      setMessages(prev=>[...prev,{role:"assistant",content:String(j.answer||"")}]);setPicks(j.products||[]);
    }catch(e){
      const fallback=tr.fallback;
-     setMessages(prev=>[...prev,{role:"assistant",content:fallback}]);
+     // Show one retryable outage notice, not a duplicate chat message.
      setError(tr.fallback);
    }
    finally{setBusy(false);}

@@ -64,10 +64,21 @@ export type SubcategoryAllocation=CategoryAllocation&{subcategory:string};
 export type MarketplaceData={products:Product[];categories:CategoryAllocation[];subcategories:SubcategoryAllocation[];mode:string};
 
 export async function getMarketplaceData():Promise<MarketplaceData>{
-  const r=await fetch(MARKETPLACE_API+"?limit=250&allocation=1",{next:{revalidate:300}});
-  if(!r.ok) throw new Error("Marketplace API failed");
-  const j=await r.json();
-  return {products:j.data||[],categories:j.allocation?.categories||[],subcategories:j.allocation?.subcategories||[],mode:j.mode||"UNKNOWN"};
+  // The upstream Edge Function occasionally returns HTTP 500; retry once without
+  // the Next.js data cache rather than silently turning an outage into zero products.
+  let lastError:Error=new Error("Marketplace API unavailable");
+  for(let attempt=0;attempt<2;attempt++){
+    try{
+      const r=await fetch(MARKETPLACE_API+"?limit=250&allocation=1",attempt===0?{next:{revalidate:300}}:{cache:"no-store"});
+      if(!r.ok)throw new Error("Marketplace API HTTP "+r.status);
+      const j=await r.json();
+      if(!Array.isArray(j.data))throw new Error("Marketplace API invalid data shape");
+      return {products:j.data,categories:Array.isArray(j.allocation?.categories)?j.allocation.categories:[],subcategories:Array.isArray(j.allocation?.subcategories)?j.allocation.subcategories:[],mode:j.mode||"UNKNOWN"};
+    }catch(error){
+      lastError=error instanceof Error?error:new Error("Marketplace API unknown error");
+    }
+  }
+  throw lastError;
 }
 export async function getProducts():Promise<Product[]>{return (await getMarketplaceData()).products}
 export async function getProduct(id:string):Promise<Product|null>{
