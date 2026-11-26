@@ -6,10 +6,10 @@ import {compactTitle,money,n} from "../lib/products";
 import {directProduct} from "../lib/siteDirector";
 
 const stateLabel=(p:Product)=>{
-  if(p.publication_tier==="VERIFIED_PAIN_WINNER") return ["VERIFIED","good"];
+  if(p.publication_tier==="VERIFIED_PAIN_WINNER") return ["RESEARCH REVIEWED","good"];
   const o=(p.greek_gap_opportunity||"").toUpperCase();
-  if(o==="PROMISING") return ["RESEARCHED","good"];
-  if(o==="TEST") return ["DISCOVERY","warn"];
+  if(o==="PROMISING") return ["RESEARCH SIGNAL","good"];
+  if(o==="TEST") return ["PRELIMINARY","warn"];
   return ["DISCOVERY","muted"];
 };
 const roleLabel=(v:any)=>String(v||"category_solution").replaceAll("_"," ").toUpperCase();
@@ -92,7 +92,7 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
         <h1>Πράγματα που δεν ήξερες ότι <em>χρειάζεσαι.</em></h1>
         <p className="heroBody">Μέχρι να δεις τι λύνουν. Ανακαλύπτουμε προϊόντα με πραγματικό use-case, ελληνικό ενδιαφέρον και εμπορικό νόημα — και μετά σου δείχνουμε το γιατί.</p>
         <div className="searchBar cinematicSearch"><span>⌕</span><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Πες το πρόβλημα, όχι το όνομα του προϊόντος…" aria-label="Αναζήτηση marketplace"/><b>{visible.length}</b></div>
-        <div className="heroSignals"><span>{verifiedCount} verified</span><span>{fallbackCount} discoveries</span><span>{demandCategories.length} live categories</span></div>
+        <div className="heroSignals"><span>{verifiedCount} research-reviewed</span><span>{fallbackCount} exploratory</span><span>{demandCategories.length} live categories</span></div>
       </div>
 
       {heroProduct&&heroDirection&&<Link href={"/product/"+heroProduct.source_product_id} className="heroProductStage reveal delay1">
@@ -126,7 +126,7 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
     <section id="demand" className="demandAtlas">
       <div className="shell sectionHead">
         <div><p className="kicker">LIVE DEMAND ATLAS</p><h2>Αγορές με πραγματικά προβλήματα.</h2></div>
-        <p>Κάθε category ανοίγει διαφορετικό discovery field. Δεν πουλάμε taxonomy· οργανώνουμε λύσεις γύρω από pains.</p>
+        <p>Κάθε category ανοίγει διαφορετικό discovery field. Οργανώνουμε τις διαθέσιμες επιλογές γύρω από πραγματικές ανάγκες. Τα demand scores είναι ερευνητικά σήματα, όχι στατιστικά πωλήσεων.</p>
       </div>
       <div className="atlasRail">
         {demandCategories.map(c=>{
@@ -165,7 +165,7 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
     <section id="market" className="shell productSection">
       <div className="sectionHead">
         <div><p className="kicker">DISCOVERY MARKET</p><h2>{visible.length} λύσεις για εξερεύνηση</h2></div>
-        <p>{problem==="ALL"?"Curated category shelves και verified pain winners σε ένα visual discovery field.":"Για κάθε συγκεκριμένο pain κρατάμε έως 3 verified winners και συμπληρώνουμε με researched category discoveries όπου χρειάζεται."}</p>
+        <p>{problem==="ALL"?"Ερευνημένες και διερευνητικές επιλογές· επιβεβαίωσε τη διαθεσιμότητα και τους όρους στο κατάστημα.":"Η κατάταξη δείχνει θεματική συνάφεια, όχι αποδεδειγμένο conversion. Έλεγξε ανεξάρτητα τους εμπορικούς όρους."}</p>
       </div>
       <div className="productGrid artisticGrid">
         {visible.slice(0,limit).map((p,i)=>{
@@ -181,14 +181,14 @@ export default function Marketplace({products,categories,subcategories,mode}:{pr
             <div className="cardBody">
               <p className="categoryLine">{p.problem_category||"Opportunity"}{p.problem_subcategory?" / "+p.problem_subcategory:""} · demand {demand||"—"}</p>
               <p className="painLabel">{direction.cardHook}</p><h3>{compactTitle(p.title)}</h3>
-              <div className="cardMeta"><strong>{money(p.price_eur)}</strong><span>{(p.sold_count||0)>0?`${p.sold_count} observed sales`:"AI evidence review"}</span></div>
+              <div className="cardMeta"><strong>{money(p.price_eur)}</strong><span>{(p.sold_count||0)>0?"Seller metric · not verified":"Έλεγχος στοιχείων πριν την αγορά"}</span></div>
               <div className="proofBars"><div><span>Demand</span><b style={{width:`${Math.max(12,demand)}%`}}></b></div><div><span>Evidence</span><b style={{width:`${Math.max(18,conf)}%`}}></b></div></div>
               <div className="cardBottom"><span>#{p.selection_rank||"?"} · {roleLabel(p.selection_role)}</span><b>Open story →</b></div>
             </div>
           </Link>
         })}
       </div>
-      {!visible.length&&<div className="emptyState"><b>Η category βρίσκεται σε ενεργό AI research expansion.</b><span>Οι agents συνεχίζουν discovery μέχρι να υπάρχει ουσιαστικό set λύσεων.</span></div>}
+      {!visible.length&&<div className="emptyState"><b>Δεν υπάρχουν επιλογές με αυτά τα κριτήρια.</b><span>Δοκίμασε διαφορετική κατηγορία ή αναζήτηση. Δεν εμφανίζουμε μη επαληθευμένο inventory.</span></div>}
       {limit<visible.length&&<div className="loadMoreWrap"><button className="loadMore" onClick={()=>setLimit(v=>v+18)}>Δείξε άλλες {Math.min(18,visible.length-limit)} λύσεις <span>↓</span></button><small>{limit} από {visible.length}</small></div>}
     </section>
 
